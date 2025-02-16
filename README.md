@@ -1,3 +1,3 @@
-# Influence of Acquisition Function, Random Process Model, and Environmental Budget Variables on Constrained Bayesian Optimization of Neural Network Hyperparameters
+# Influence of Acquisition Function and Environmental Budget Variables on Constrained Bayesian Optimization of Neural Network Hyperparameters
 
 This project aims to evaluate how the Alternating Direction of Multipliers-Bayesian Optimization (ADMMBO) technique for single-objective constrained Bayesian optimization performs on tuning neural network hyperparameters using different acquisition functions, different surrogate random process models, and using environmental variables (like training set size, number of epochs, or function evaluations) as tunable hyperparameters in and of themselves.
