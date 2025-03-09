@@ -5,7 +5,8 @@ from pathlib import Path
 import torchvision.transforms.v2 as transforms
 import torch.nn as nn
 import torch.optim as optim
-from torch.profiler import profile, record_function, ProfilerActivity
+from torch.profiler import profile, ProfilerActivity
+import torch.utils.benchmark as benchmark
 
 # adding all the modules and submodules to the path
 import sys
@@ -16,14 +17,14 @@ sys.path.insert(0, "C:/Users/Gil/Documents/Repositories/Python/CS_6140/Project")
 dev = "cuda"
 
 # # importing the correct package defined functions
-from src.network.create_network import create_network
+from src.network.create_network import create_ff_network
 from src.network.train_test_network import (
     train_network,
     test_network,
     train_test_network_loop,
 )
 
-testing_network = create_network(
+testing_network = create_ff_network(
     current_device=dev,
     number_input_features=784,
     number_output_features=10,
@@ -66,45 +67,46 @@ criterion = nn.CrossEntropyLoss()
 # optimizer initialization (one file, needs separation due to hyperparameter inputs)
 optimizer_ffn = optim.Adam(params=testing_network.parameters())
 
-# training (already modular) (profiling is not)
-with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA]) as prof:
-    with record_function("model_training"):
-        epoch_loss, epoch_accuracy, average_train_loss = train_network(
-            trainloader, testing_network, criterion, optimizer_ffn, dev, print_out=False
-        )
 
-print(prof.key_averages().table(sort_by="cuda_time_total"))
+# full train/test network loop testing (modular)
+(
+    train_loss_list,
+    train_accuracy_list,
+    avg_train_loss_list,
+    test_loss_list,
+    test_accuracy_list,
+    avg_test_loss_list,
+) = train_test_network_loop(
+    num_epochs=3,
+    train_loader=trainloader,
+    test_loader=testloader,
+    model=testing_network,
+    loss_fn=criterion,
+    optimizer=optimizer_ffn,
+    device=dev,
+    writer=None,
+    param_file=None,
+    model_name="Manual Testing Network",
+    print_out=True,
+    log_tb=False,
+    save_params=False,
+)
 
-# # testing (already modular)
+# profiler testing (needs modularization)
+with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, profile_memory=True) as prof:
+    test_loss, test_accuracy, average_test_loss = test_network(dataloader=testloader,
+                                                               model=testing_network,
+                                                               loss_fn=criterion,
+                                                               device=dev)
 
-# test_loss, test_accuracy, average_test_loss = test_network(
-#     testloader, testing_network, criterion, dev
-# )
+for fEventAvg in prof.key_averages():
+    if fEventAvg.key != "[memory]":
+        print("Total CPU Time for", fEventAvg.key, ":", fEventAvg.cpu_time_total, sep=" ")
+        print("Total CUDA Time for", fEventAvg.key, ":", fEventAvg.device_time_total, sep=" ")
+        print("Total CPU Memory for", fEventAvg.key, ":", fEventAvg.cpu_memory_usage, sep=" ")
+        print("Total CUDA Memory for", fEventAvg.key, ":", fEventAvg.device_memory_usage, sep=" ")
 
-# print(test_loss)
-# print(test_accuracy)
-# print(average_test_loss)
+print(prof.key_averages().table())
 
-# # full train/test network loop testing
-# (
-#     train_loss_list,
-#     train_accuracy_list,
-#     avg_train_loss_list,
-#     test_loss_list,
-#     test_accuracy_list,
-#     avg_test_loss_list,
-# ) = train_test_network_loop(
-#     num_epochs=3,
-#     train_loader=trainloader,
-#     test_loader=testloader,
-#     model=testing_network,
-#     loss_fn=criterion,
-#     optimizer=optimizer_ffn,
-#     device=dev,
-#     writer=None,
-#     param_file=None,
-#     model_name="Manual Testing Network",
-#     print_out=True,
-#     log_tb=False,
-#     save_params=False,
-# )
+# found method to get memory and time used during inference, so likely will try for a three-objective optimization
+# overhead is high, so may not be effective for training
