@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 
-def train(
+def train_network(
     dataloader: torch.utils.data.DataLoader,
     model: nn.Module,
     loss_fn: nn.modules.loss._Loss,
@@ -69,7 +69,7 @@ def train(
     return epoch_loss, epoch_accuracy, average_train_loss
 
 
-def test(
+def test_network(
     dataloader: torch.utils.data.DataLoader, model: nn.Module, loss_fn: nn.modules.loss._Loss, device: str
 ):
 
@@ -119,7 +119,7 @@ def test(
     return test_loss, test_accuracy, average_test_loss
 
 
-def train_test_loop(
+def train_test_network_loop(
     num_epochs: int,
     train_loader: torch.utils.data.DataLoader,
     test_loader: torch.utils.data.DataLoader,
@@ -129,7 +129,7 @@ def train_test_loop(
     device: str,
     writer: None | SummaryWriter,
     param_file: None | str,
-    model_name: str,
+    model_name: None | str,
     print_out=True,
     log_tb=False,
     save_params=False,
@@ -164,11 +164,14 @@ def train_test_loop(
 
         # print header if requested
         if print_out:
-            print("\nModel: ", model_name)
+            
+            if model_name is not None:
+                print("\nModel: ", model_name)
+            
             print(f"Epoch: {t+1}\n-------------------------------")
 
         # get training loss and accuracy for the epoch
-        train_epoch_loss, train_epoch_accuracy, epoch_avg_train_loss = train(
+        train_epoch_loss, train_epoch_accuracy, epoch_avg_train_loss = train_network(
             dataloader=train_loader,
             model=model,
             loss_fn=loss_fn,
@@ -195,7 +198,7 @@ def train_test_loop(
             writer.add_scalar("Loss/Train/Average", epoch_avg_train_loss, t)
 
         # get the total test loss, total accuracy, and average test loss for the epoch
-        test_epoch_loss, test_epoch_accuracy, epoch_avg_test_loss = test(
+        test_epoch_loss, test_epoch_accuracy, epoch_avg_test_loss = test_network(
             dataloader=test_loader, model=model, loss_fn=loss_fn, device=device
         )
 
