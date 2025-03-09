@@ -1,4 +1,4 @@
-# Function to output a custom neurla using PyTorch
+# Functions to output custom neural networks using PyTorch
 # current restrictions are:
 # - 3 layers (cannot vary due to hierarchical nature of hyperparameter)
 # - uniform activation function across all layers
@@ -10,7 +10,7 @@
 # import statements
 from torch import nn
 
-def create_network(
+def create_ff_network(
     current_device: str,
     number_input_features: int,
     number_output_features: int,
