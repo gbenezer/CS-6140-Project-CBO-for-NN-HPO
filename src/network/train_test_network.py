@@ -1,3 +1,5 @@
+# file to define the training and testing logic for the neural networks
+
 import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
