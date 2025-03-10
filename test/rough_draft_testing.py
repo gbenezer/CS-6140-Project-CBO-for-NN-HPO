@@ -29,6 +29,7 @@ from src.network.train_test_network import (
     test_network,
     train_test_network_loop,
 )
+from src.network.create_network_lightning_2 import create_ff_pl_network_2
 
 # testing_network = create_ff_network(
 #     current_device=dev,
@@ -132,33 +133,43 @@ criterion = nn.CrossEntropyLoss()
 # overhead is high, so may not be effective for training
 
 # testing Lightning framework
-testing_lightning_network = create_ff_pl_network(
-    loss=criterion,
-    number_input_features=784,
-    number_output_features=10,
-    input_dropout_probability=0.2,
-    hidden_dropout_probability=0.5,
-    output_dropout_probability=0.1,
-    hidden_layer_nodes_1=500,
-    hidden_layer_nodes_2=100,
-    hidden_layer_nodes_3=50,
-    relu=True,
-    learning_rate=0.001,
-    beta1=0.9,
-    beta2=0.999,
-    w_decay=0,
-)
+# testing_lightning_network = create_ff_pl_network(
+#     loss=criterion,
+#     number_input_features=784,
+#     number_output_features=10,
+#     input_dropout_probability=0.2,
+#     hidden_dropout_probability=0.5,
+#     output_dropout_probability=0.1,
+#     hidden_layer_nodes_1=500,
+#     hidden_layer_nodes_2=100,
+#     hidden_layer_nodes_3=50,
+#     relu=True,
+#     learning_rate=0.001,
+#     beta1=0.9,
+#     beta2=0.999,
+#     w_decay=0,
+# )
+
+testing_lightning_network_2 = create_ff_pl_network_2(784,
+                                                     10,
+                                                     0.2,
+                                                     0.5,
+                                                     0.1,
+                                                     500,
+                                                     100,
+                                                     50,
+                                                     True,
+                                                     criterion,
+                                                     1e-3,
+                                                     0.9,
+                                                     0.999,
+                                                     0)
 
 simple_profiler = SimpleProfiler(filename="fit_profiling_output")
 trainer = L.Trainer(max_epochs=5, profiler=simple_profiler)
 
 trainer.fit(
-    model=testing_lightning_network,
+    model=testing_lightning_network_2,
     train_dataloaders=trainloader,
     val_dataloaders=validloader,
 )
-
-# test the model
-trainer.test(model=testing_lightning_network,
-             dataloaders=testloader,
-             verbose=False)
