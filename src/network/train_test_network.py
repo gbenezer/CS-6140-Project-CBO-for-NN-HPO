@@ -2,6 +2,7 @@
 
 import torch
 import torch.nn as nn
+import time
 from torch.utils.tensorboard import SummaryWriter
 
 def train_network(
@@ -160,6 +161,13 @@ def train_test_network_loop(
     test_loss_list = []
     test_accuracy_list = []
     avg_test_loss_list = []
+    train_duration_list = []
+    cumulative_train_duration_list = []
+    test_duration_list = []
+    cumulative_test_duration_list = []
+    
+    current_train_duration = 0
+    current_test_duration = 0
 
     # loop over all the training and testing data a set number of times
     for t in range(num_epochs):
@@ -173,6 +181,7 @@ def train_test_network_loop(
             print(f"Epoch: {t+1}\n-------------------------------")
 
         # get training loss and accuracy for the epoch
+        epoch_train_start = time.time()
         train_epoch_loss, train_epoch_accuracy, epoch_avg_train_loss = train_network(
             dataloader=train_loader,
             model=model,
@@ -181,45 +190,64 @@ def train_test_network_loop(
             device=device,
             print_out=print_out,
         )
+        epoch_train_end = time.time()
+        epoch_train_duration = (epoch_train_end - epoch_train_start)
+        current_train_duration += epoch_train_duration
 
         # capture values in lists
         train_loss_list.append(train_epoch_loss)
         train_accuracy_list.append(train_epoch_accuracy)
         avg_train_loss_list.append(epoch_avg_train_loss)
+        train_duration_list.append(epoch_train_duration)
+        cumulative_train_duration_list.append(current_train_duration)
 
         # if requested, print the values
         if print_out:
             print("Train epoch loss: ", train_epoch_loss)
             print("Train epoch accuracy: ", train_epoch_accuracy)
             print("Batch average train epoch loss: ", epoch_avg_train_loss)
+            print("Epoch training duration, seconds: ", epoch_train_duration)
+            print("Cumulative training duration, seconds: ", current_train_duration)
 
         # if requested, write the values to TensorBoard
         if log_tb:
             writer.add_scalar("Loss/Train/Total", train_epoch_loss, t)
             writer.add_scalar("Accuracy/Train", train_epoch_accuracy, t)
-            writer.add_scalar("Loss/Train/Average", epoch_avg_train_loss, t)
+            writer.add_scalar("Loss/Train/Batch_Average", epoch_avg_train_loss, t)
+            writer.add_scalar("Duration/Train/Epoch", epoch_train_duration, t)
+            writer.add_scalar("Duration/Train/Cumulative", current_train_duration, t)
 
         # get the total test loss, total accuracy, and average test loss for the epoch
+        epoch_test_start = time.time()
         test_epoch_loss, test_epoch_accuracy, epoch_avg_test_loss = test_network(
             dataloader=test_loader, model=model, loss_fn=loss_fn, device=device
         )
+        epoch_test_end = time.time()
+        epoch_test_duration = (epoch_test_end - epoch_test_start)
+        current_test_duration += epoch_test_duration
 
         # capture values in lists
         test_loss_list.append(test_epoch_loss)
         test_accuracy_list.append(test_epoch_accuracy)
         avg_test_loss_list.append(epoch_avg_test_loss)
+        test_duration_list.append(epoch_test_duration)
+        cumulative_test_duration_list.append(current_test_duration)
 
         # if requested, print the values
         if print_out:
             print("Test epoch loss: ", test_epoch_loss)
             print("Test epoch accuracy: ", test_epoch_accuracy)
             print("Batch average test epoch loss: ", epoch_avg_test_loss)
+            print("Epoch test duration, seconds: ", epoch_test_duration)
+            print("Cumulative test duration, seconds: ", current_test_duration)
 
         # if requested, write the values to TensorBoard
         if log_tb:
             writer.add_scalar("Loss/Test/Total", test_epoch_loss, t)
             writer.add_scalar("Accuracy/Test", test_epoch_accuracy, t)
-            writer.add_scalar("Loss/Test/Average", epoch_avg_test_loss, t)
+            writer.add_scalar("Loss/Test/Batch_Average", epoch_avg_test_loss, t)
+            writer.add_scalar("Duration/Test/Epoch", epoch_test_duration, t)
+            writer.add_scalar("Duration/Test/Cumulative", current_test_duration, t)
 
     # if requested, save the parameter values into a file
     if save_params:
@@ -238,7 +266,11 @@ def train_test_network_loop(
         train_loss_list,
         train_accuracy_list,
         avg_train_loss_list,
+        train_duration_list,
+        cumulative_train_duration_list,
         test_loss_list,
         test_accuracy_list,
         avg_test_loss_list,
+        test_duration_list,
+        cumulative_test_duration_list
     )
