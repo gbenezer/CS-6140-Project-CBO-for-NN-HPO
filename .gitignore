@@ -183,3 +183,6 @@ lightning_logs/
 # ignore this file; only here as reference for tutorial purposes
 # may model some of the network creation code after it
 src/network/example_code_online.py
+
+# ignore checkpoint files
+checkpoints/
