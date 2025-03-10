@@ -8,10 +8,18 @@ import torchvision.transforms.v2 as transforms
 import torch.nn as nn
 import torch.optim as optim
 import lightning as L
+import time
 from multiprocessing import Process, freeze_support
 from torch.profiler import profile, ProfilerActivity
-from lightning.pytorch.profilers import SimpleProfiler, AdvancedProfiler, PyTorchProfiler
+from lightning.pytorch.profilers import (
+    SimpleProfiler,
+    AdvancedProfiler,
+    PyTorchProfiler,
+)
+from torch.utils.tensorboard import SummaryWriter
 
+# reducing some of the precision to hopefully increase performance
+torch.set_float32_matmul_precision("high")
 
 # adding all the modules and submodules to the path
 import sys
@@ -31,18 +39,25 @@ from src.network.train_test_network import (
 )
 from src.network.create_network_lightning_2 import create_ff_pl_network_2
 
-# testing_network = create_ff_network(
-#     current_device=dev,
-#     number_input_features=784,
-#     number_output_features=10,
-#     input_dropout_probability=0.2,
-#     hidden_dropout_probability=0.5,
-#     output_dropout_probability=0.1,
-#     hidden_layer_nodes_1=500,
-#     hidden_layer_nodes_2=100,
-#     hidden_layer_nodes_3=50,
-#     relu=True,
-# )
+
+import logging
+import warnings
+
+warnings.filterwarnings("ignore")  # Disable data logger warnings
+logging.getLogger("lightning").setLevel(logging.ERROR)  # Disable GPU/TPU prints
+
+testing_network = create_ff_network(
+    current_device=dev,
+    number_input_features=784,
+    number_output_features=10,
+    input_dropout_probability=0.2,
+    hidden_dropout_probability=0.5,
+    output_dropout_probability=0.1,
+    hidden_layer_nodes_1=500,
+    hidden_layer_nodes_2=100,
+    hidden_layer_nodes_3=50,
+    relu=True,
+)
 
 # portions of code that need to be modularized in the network subpackage
 
@@ -56,6 +71,8 @@ image_transform = transforms.Compose(
 )
 
 data_directory = Path(__file__).parent.parent.resolve() / "torch_data"
+params_directory = Path(__file__).parent.parent.resolve() / "param_files"
+tb_directory = Path(__file__).parent.parent.resolve() / "tb_files"
 
 trainset = datasets.MNIST(
     root=data_directory, train=True, download=True, transform=image_transform
@@ -77,41 +94,60 @@ train_set, valid_set = data.random_split(
     trainset, [train_set_size, valid_set_size], generator=seed
 )
 trainloader = torch.utils.data.DataLoader(
-    dataset=train_set, num_workers=0, batch_size=64, shuffle=True
+    dataset=train_set,
+    num_workers=15,
+    batch_size=64,
+    shuffle=True,
+    persistent_workers=True,
 )
 validloader = torch.utils.data.DataLoader(
-    dataset=valid_set, num_workers=0, batch_size=64
+    dataset=valid_set, num_workers=15, batch_size=64, persistent_workers=True
 )
 
 criterion = nn.CrossEntropyLoss()
 
 # optimizer initialization (one file, needs separation due to hyperparameter inputs)
-# optimizer_ffn = optim.Adam(params=testing_network.parameters())
+optimizer_ffn = optim.Adam(params=testing_network.parameters())
 
+run = "run_3"
 
-# # full train/test network loop testing (modular)
-# (
-#     train_loss_list,
-#     train_accuracy_list,
-#     avg_train_loss_list,
-#     test_loss_list,
-#     test_accuracy_list,
-#     avg_test_loss_list,
-# ) = train_test_network_loop(
-#     num_epochs=3,
-#     train_loader=trainloader,
-#     test_loader=testloader,
-#     model=testing_network,
-#     loss_fn=criterion,
-#     optimizer=optimizer_ffn,
-#     device=dev,
-#     writer=None,
-#     param_file=None,
-#     model_name="Manual Testing Network",
-#     print_out=True,
-#     log_tb=False,
-#     save_params=False,
-# )
+test_writer = SummaryWriter(tb_directory / run)
+
+# full train/test network loop testing (modular)
+if __name__ == "__main__":
+    freeze_support()
+    print("starting training and testing")
+    (
+        train_loss_list,
+        train_accuracy_list,
+        avg_train_loss_list,
+        train_duration_list,
+        cumulative_train_duration_list,
+        test_loss_list,
+        test_accuracy_list,
+        avg_test_loss_list,
+        test_duration_list,
+        cumulative_test_duration_list
+    ) = train_test_network_loop(
+        num_epochs=20,
+        train_loader=trainloader,
+        test_loader=validloader,
+        model=testing_network,
+        loss_fn=criterion,
+        optimizer=optimizer_ffn,
+        device=dev,
+        writer=test_writer,
+        param_file= params_directory / (run + ".pth"),
+        model_name="Manual Testing Network",
+        print_out=False,
+        log_tb=True,
+        save_params=True,
+    )
+    print("ending training and testing")
+    total_params = sum(p.numel() for p in testing_network.parameters() if p.requires_grad)
+    print(f'Total number of parameters: {total_params}')
+    print("Training durations, seconds:", train_duration_list)
+    print("Test durations, seconds:", test_duration_list)
 
 # # profiler testing (needs modularization)
 # with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, profile_memory=True) as prof:
@@ -132,7 +168,7 @@ criterion = nn.CrossEntropyLoss()
 # found method to get memory and time used during inference, so likely will try for a three-objective optimization
 # overhead is high, so may not be effective for training
 
-# testing Lightning framework
+# # testing Lightning framework
 # testing_lightning_network = create_ff_pl_network(
 #     loss=criterion,
 #     number_input_features=784,
@@ -150,26 +186,25 @@ criterion = nn.CrossEntropyLoss()
 #     w_decay=0,
 # )
 
-testing_lightning_network_2 = create_ff_pl_network_2(784,
-                                                     10,
-                                                     0.2,
-                                                     0.5,
-                                                     0.1,
-                                                     500,
-                                                     100,
-                                                     50,
-                                                     True,
-                                                     criterion,
-                                                     1e-3,
-                                                     0.9,
-                                                     0.999,
-                                                     0)
+# testing_lightning_network_2 = create_ff_pl_network_2(
+#     784, 10, 0.2, 0.5, 0.1, 500, 100, 50, True, criterion, 1e-3, 0.9, 0.999, 0
+# )
 
-simple_profiler = SimpleProfiler(filename="fit_profiling_output")
-trainer = L.Trainer(max_epochs=5, profiler=simple_profiler)
+# simple_profiler = SimpleProfiler(filename="fit_profiling_output")
+# trainer = L.Trainer(max_epochs=5, enable_progress_bar=False, logger=False)
 
-trainer.fit(
-    model=testing_lightning_network_2,
-    train_dataloaders=trainloader,
-    val_dataloaders=validloader,
-)
+# if __name__ == "__main__":
+#     freeze_support()
+
+#     start = time.time()
+#     logger = logging.getLogger("lightning.utilities.rank_zero")
+#     logger.setLevel(logging.ERROR)
+#     trainer.fit(
+#         model=testing_lightning_network,
+#         train_dataloaders=trainloader,
+#         val_dataloaders=validloader,
+#     )
+#     end = time.time()
+#     duration = (end - start) / 60.0
+#     print("Training time:", duration)
+#     logger.setLevel(logging.INFO)
