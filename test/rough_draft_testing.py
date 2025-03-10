@@ -149,11 +149,16 @@ testing_lightning_network = create_ff_pl_network(
     w_decay=0,
 )
 
-profiler = SimpleProfiler(filename="prof_logs")
-trainer = L.Trainer(max_epochs=3, profiler=profiler)
+simple_profiler = SimpleProfiler(filename="fit_profiling_output")
+trainer = L.Trainer(max_epochs=5, profiler=simple_profiler)
 
 trainer.fit(
     model=testing_lightning_network,
     train_dataloaders=trainloader,
     val_dataloaders=validloader,
 )
+
+# test the model
+trainer.test(model=testing_lightning_network,
+             dataloaders=testloader,
+             verbose=False)
