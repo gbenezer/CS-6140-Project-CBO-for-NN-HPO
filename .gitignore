@@ -186,3 +186,9 @@ src/network/example_code_online.py
 
 # ignore checkpoint files
 checkpoints/
+
+# ignore TensorBoard files
+tb_files/
+
+# ignore saved parameter files
+param_files/
