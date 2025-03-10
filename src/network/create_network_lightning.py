@@ -11,7 +11,7 @@
 import torch
 from torch import nn
 from torch.optim import Adam
-import pytorch_lightning as pl
+import lightning as L
 
 
 def create_ff_pl_network(
@@ -38,7 +38,7 @@ def create_ff_pl_network(
     else:
         activation = nn.Sigmoid()
 
-    class customModel(pl.LightningModule):
+    class customModel(L.LightningModule):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.flatten = nn.Flatten()
@@ -72,7 +72,6 @@ def create_ff_pl_network(
             return x
 
         def training_step(self, batch, batch_idx, *args, **kwargs):
-            super().training_step(*args, **kwargs)
             X, y = batch
             yhat = self(X)
             train_loss = loss(yhat, y)
@@ -80,7 +79,6 @@ def create_ff_pl_network(
             return train_loss
 
         def validation_step(self, batch, batch_idx, *args, **kwargs):
-            super().validation_step(*args, **kwargs)
             X, y = batch
             yhat = self(X)
             val_loss = loss(yhat, y)
@@ -99,7 +97,6 @@ def create_ff_pl_network(
                 )
 
         def configure_optimizers(self):
-            super().configure_optimizers()
             return Adam(
                 self.parameters(),
                 lr=learning_rate,

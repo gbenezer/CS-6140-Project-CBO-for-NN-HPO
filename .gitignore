@@ -176,3 +176,6 @@ cython_debug/
 
 # torch data downloaded to the project folder
 torch_data/
+
+# lightning logs and profiling results should not be uploaded
+lightning_logs/
