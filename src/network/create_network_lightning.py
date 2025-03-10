@@ -29,7 +29,7 @@ def create_ff_pl_network(
     beta1: float,
     beta2: float,
     w_decay: float,
-) -> nn.Module:
+) -> L.LightningModule:
 
     # TODO: implement better activation function logic
 
