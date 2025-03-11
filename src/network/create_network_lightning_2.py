@@ -2,7 +2,6 @@
 # current restrictions are:
 # - 3 layers (cannot vary due to hierarchical nature of hyperparameter)
 # - uniform activation function across all layers
-# - only two supported activation functions (Sigmoid and Relu)
 # - feedforward
 
 # TODO: finish functionality
@@ -10,11 +9,14 @@
 # import statements
 import torch
 from torch import nn
-from torch.optim import Adam
 import lightning as L
 
+from torchmetrics.functional.classification.accuracy import multiclass_accuracy
 
-def create_ff_network(
+# Adaptation of code from https://github.com/pytorch/tutorials/blob/main/intermediate_source/mnist_train_nas.py
+# hopefully to be able to handle more general feedforward architecture for both classification and regression
+
+def create_ff_module(
     number_input_features: int,
     number_output_features: int,
     input_dropout_probability: float,
@@ -23,136 +25,74 @@ def create_ff_network(
     hidden_layer_nodes_1: int,
     hidden_layer_nodes_2: int,
     hidden_layer_nodes_3: int,
-    relu: bool,
-) -> nn.Module:
-
-    # TODO: implement better activation function logic
-
-    if relu:
-        activation = nn.ReLU()
-    else:
-        activation = nn.Sigmoid()
-
-    class CustomNN(nn.Module):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            self.flatten = nn.Flatten()
-            self.input_dropout = nn.Dropout(p=input_dropout_probability)
-            self.stack = nn.Sequential(
-                nn.Linear(
-                    in_features=number_input_features, out_features=hidden_layer_nodes_1
-                ),
-                activation,
-                nn.Dropout(p=hidden_dropout_probability),
-                nn.Linear(
-                    in_features=hidden_layer_nodes_1, out_features=hidden_layer_nodes_2
-                ),
-                activation,
-                nn.Dropout(p=hidden_dropout_probability),
-                nn.Linear(
-                    in_features=hidden_layer_nodes_2, out_features=hidden_layer_nodes_3
-                ),
-                activation,
-                nn.Dropout(p=output_dropout_probability),
-                nn.Linear(
-                    in_features=hidden_layer_nodes_3,
-                    out_features=number_output_features,
-                ),
-            )
-
-        def forward(self, x):
-            x = self.flatten(x)  # flatten input to 1D vector
-            x = self.input_dropout(x)  # dropout random amount of input
-            x = self.stack(x)
-            return x
-
-    return CustomNN()
-
-
-def create_ff_pl_module(
-    loss: nn.modules.loss._Loss,
-    neural_network: nn.Module,
-    learning_rate: float,
-    beta1: float,
-    beta2: float,
-    w_decay: float,
-) -> L.LightningModule:
-
-    class CustomModel(L.LightningModule):
-        def __init__(self, network):
-            super().__init__()
-            self.network = network
-
-        def training_step(self, batch, batch_idx):
-            X, y = batch
-            yhat = self.network(X)
-            train_loss = loss(yhat, y)
-            self.log("train_loss", train_loss)
-            return train_loss
-
-        def validation_step(self, batch, batch_idx):
-            X, y = batch
-            yhat = self.network(X)
-            val_loss = loss(yhat, y)
-            self.log("val_loss", val_loss)
-
-            # if it is a classification task with CE loss, calculate accuracy
-            if loss == nn.CrossEntropyLoss():
-                correct = (yhat.argmax(1) == y).sum().item()
-                total = y.size(0)
-                self.log(
-                    "val_accuracy",
-                    correct / total,
-                    on_step=False,
-                    on_epoch=True,
-                    prog_bar=True,
-                )
-
-        def configure_optimizers(self):
-            return Adam(
-                self.parameters(),
-                lr=learning_rate,
-                betas=(beta1, beta2),
-                weight_decay=w_decay,
-            )
-            
-        def test_step(self, batch, batch_idx):
-            X, y = batch
-            yhat = self.network(X)
-            test_loss = loss(yhat, y)
-            self.log("test_loss", test_loss)
-
-    return CustomModel(neural_network)
-
-
-def create_ff_pl_network_2(
-    number_input_features: int,
-    number_output_features: int,
-    input_dropout_probability: float,
-    hidden_dropout_probability: float,
-    output_dropout_probability: float,
-    hidden_layer_nodes_1: int,
-    hidden_layer_nodes_2: int,
-    hidden_layer_nodes_3: int,
-    relu: bool,
+    activation: nn.Module,
     loss: nn.modules.loss._Loss,
     learning_rate: float,
     beta1: float,
     beta2: float,
     w_decay: float,
 ):
-    neural_architecture = create_ff_network(
-        number_input_features,
-        number_output_features,
-        input_dropout_probability,
-        hidden_dropout_probability,
-        output_dropout_probability,
-        hidden_layer_nodes_1,
-        hidden_layer_nodes_2,
-        hidden_layer_nodes_3,
-        relu,
-    )
 
-    return create_ff_pl_module(
-        loss, neural_architecture, learning_rate, beta1, beta2, w_decay
-    )
+    class FeedForwardClassifier(L.LightningModule):
+        def __init__(self):
+            super().__init__()
+
+            # Create a PyTorch model
+            layers = [nn.Flatten(), nn.Dropout(p=input_dropout_probability)]
+            width = number_input_features
+            hidden_layers = [
+                hidden_layer_nodes_1,
+                hidden_layer_nodes_2,
+                hidden_layer_nodes_3,
+            ]
+            num_params = 0
+            for hidden_size in hidden_layers:
+                if hidden_size > 0:
+                    layers.append(nn.Linear(width, hidden_size))
+                    layers.append(activation)
+                    layers.append(nn.Dropout(p=hidden_dropout_probability))
+                    num_params += width * hidden_size
+                    width = hidden_size
+            layers.append(nn.Dropout(p=output_dropout_probability))
+            layers.append(nn.Linear(width, number_output_features))
+            num_params += width * number_output_features
+
+            # Save the model and parameter counts
+            self.num_params = num_params
+            self.model = nn.Sequential(
+                *layers
+            )  # No need to use Relu for the last layer
+
+        def forward(self, x):
+            return self.model(x)
+
+        def training_step(self, batch, batch_idx):
+            x, y = batch
+            yhat = self(x)
+            training_loss = loss(yhat, y)
+            self.log("training_loss", training_loss, prog_bar=False)
+            preds = torch.argmax(yhat, dim=1)
+            acc = multiclass_accuracy(preds, y, num_classes=number_output_features)
+            self.log("training_accuracy", acc, prog_bar=False)
+            return training_loss
+
+        def validation_step(self, batch, batch_idx):
+            x, y = batch
+            yhat = self(x)
+            validation_loss = loss(yhat, y)
+            preds = torch.argmax(yhat, dim=1)
+            self.log("validation_loss", validation_loss, prog_bar=False)
+            acc = multiclass_accuracy(preds, y, num_classes=number_output_features)
+            self.log("validation_accuracy", acc, prog_bar=False)
+            return validation_loss
+
+        def configure_optimizers(self):
+            optimizer = torch.optim.Adam(
+                self.parameters(),
+                lr=learning_rate,
+                betas=(beta1, beta2),
+                weight_decay=w_decay,
+            )
+            return optimizer
+
+    return FeedForwardClassifier()

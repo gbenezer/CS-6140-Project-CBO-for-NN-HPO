@@ -37,8 +37,7 @@ from src.network.train_test_network import (
     test_network,
     train_test_network_loop,
 )
-from src.network.create_network_lightning_2 import create_ff_pl_network_2
-
+from src.network.create_network_lightning_2 import create_ff_module
 
 import logging
 import warnings
@@ -104,50 +103,50 @@ validloader = torch.utils.data.DataLoader(
     dataset=valid_set, num_workers=15, batch_size=64, persistent_workers=True
 )
 
-criterion = nn.CrossEntropyLoss()
+# criterion = nn.CrossEntropyLoss()
 
 # optimizer initialization (one file, needs separation due to hyperparameter inputs)
-optimizer_ffn = optim.Adam(params=testing_network.parameters())
+# optimizer_ffn = optim.Adam(params=testing_network.parameters())
 
-run = "run_3"
+# run = "run_3"
 
-test_writer = SummaryWriter(tb_directory / run)
+# test_writer = SummaryWriter(tb_directory / run)
 
-# full train/test network loop testing (modular)
-if __name__ == "__main__":
-    freeze_support()
-    print("starting training and testing")
-    (
-        train_loss_list,
-        train_accuracy_list,
-        avg_train_loss_list,
-        train_duration_list,
-        cumulative_train_duration_list,
-        test_loss_list,
-        test_accuracy_list,
-        avg_test_loss_list,
-        test_duration_list,
-        cumulative_test_duration_list
-    ) = train_test_network_loop(
-        num_epochs=20,
-        train_loader=trainloader,
-        test_loader=validloader,
-        model=testing_network,
-        loss_fn=criterion,
-        optimizer=optimizer_ffn,
-        device=dev,
-        writer=test_writer,
-        param_file= params_directory / (run + ".pth"),
-        model_name="Manual Testing Network",
-        print_out=False,
-        log_tb=True,
-        save_params=True,
-    )
-    print("ending training and testing")
-    total_params = sum(p.numel() for p in testing_network.parameters() if p.requires_grad)
-    print(f'Total number of parameters: {total_params}')
-    print("Training durations, seconds:", train_duration_list)
-    print("Test durations, seconds:", test_duration_list)
+# # full train/test network loop testing (modular)
+# if __name__ == "__main__":
+#     freeze_support()
+#     print("starting training and testing")
+#     (
+#         train_loss_list,
+#         train_accuracy_list,
+#         avg_train_loss_list,
+#         train_duration_list,
+#         cumulative_train_duration_list,
+#         test_loss_list,
+#         test_accuracy_list,
+#         avg_test_loss_list,
+#         test_duration_list,
+#         cumulative_test_duration_list
+#     ) = train_test_network_loop(
+#         num_epochs=20,
+#         train_loader=trainloader,
+#         test_loader=validloader,
+#         model=testing_network,
+#         loss_fn=criterion,
+#         optimizer=optimizer_ffn,
+#         device=dev,
+#         writer=test_writer,
+#         param_file= params_directory / (run + ".pth"),
+#         model_name="Manual Testing Network",
+#         print_out=False,
+#         log_tb=True,
+#         save_params=True,
+#     )
+#     print("ending training and testing")
+#     total_params = sum(p.numel() for p in testing_network.parameters() if p.requires_grad)
+#     print(f'Total number of parameters: {total_params}')
+#     print("Training durations, seconds:", train_duration_list)
+#     print("Test durations, seconds:", test_duration_list)
 
 # # profiler testing (needs modularization)
 # with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, profile_memory=True) as prof:
@@ -169,6 +168,23 @@ if __name__ == "__main__":
 # overhead is high, so may not be effective for training
 
 # # testing Lightning framework
+
+test_lighting_module = create_ff_module(
+    number_input_features=784,
+    number_output_features=10,
+    input_dropout_probability=0.2,
+    hidden_dropout_probability=0.5,
+    output_dropout_probability=0.1,
+    hidden_layer_nodes_1=500,
+    hidden_layer_nodes_2=100,
+    hidden_layer_nodes_3=50,
+    activation=nn.ReLU(),
+    loss=nn.CrossEntropyLoss(),
+    learning_rate=1e-3,
+    beta1=0.9,
+    beta2=0.999,
+    w_decay=0)
+
 # testing_lightning_network = create_ff_pl_network(
 #     loss=criterion,
 #     number_input_features=784,
@@ -190,21 +206,14 @@ if __name__ == "__main__":
 #     784, 10, 0.2, 0.5, 0.1, 500, 100, 50, True, criterion, 1e-3, 0.9, 0.999, 0
 # )
 
-# simple_profiler = SimpleProfiler(filename="fit_profiling_output")
-# trainer = L.Trainer(max_epochs=5, enable_progress_bar=False, logger=False)
+simple_profiler = SimpleProfiler(filename="fit_profiling_output")
+trainer = L.Trainer(max_epochs=5, enable_progress_bar=True, logger=True)
 
-# if __name__ == "__main__":
-#     freeze_support()
+if __name__ == "__main__":
+    freeze_support()
 
-#     start = time.time()
-#     logger = logging.getLogger("lightning.utilities.rank_zero")
-#     logger.setLevel(logging.ERROR)
-#     trainer.fit(
-#         model=testing_lightning_network,
-#         train_dataloaders=trainloader,
-#         val_dataloaders=validloader,
-#     )
-#     end = time.time()
-#     duration = (end - start) / 60.0
-#     print("Training time:", duration)
-#     logger.setLevel(logging.INFO)
+    trainer.fit(
+        model=test_lighting_module,
+        train_dataloaders=trainloader,
+        val_dataloaders=validloader,
+    )
