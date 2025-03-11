@@ -192,3 +192,7 @@ tb_files/
 
 # ignore saved parameter files
 param_files/
+
+# ignore any files that are kept around for posterity,
+# but not currently in use
+not_in_use/
