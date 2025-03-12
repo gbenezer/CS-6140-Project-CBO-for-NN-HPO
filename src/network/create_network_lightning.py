@@ -19,6 +19,7 @@ from torchmetrics.functional.regression.nrmse import normalized_root_mean_square
 
 def create_ff_model(
     task: Literal["regression", "classification"],
+    input_shape: tuple,
     number_input_features: int,
     number_output_features: int,
     input_dropout_probability: float,
@@ -64,6 +65,8 @@ def create_ff_model(
             self.model = nn.Sequential(
                 *layers
             )  # No need to use Relu for the last layer
+            
+            self.example_input_array = torch.rand(size=input_shape)
 
         def forward(self, x):
             return self.model(x)
