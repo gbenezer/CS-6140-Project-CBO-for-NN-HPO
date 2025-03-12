@@ -31,13 +31,13 @@ dev = "cuda"
 
 # # importing the correct package defined functions
 from src.network.create_network import create_ff_network
-from src.network.create_network_lightning import create_ff_pl_network
+from src.network.create_network_lightning_original import create_ff_pl_network
 from src.network.train_test_network import (
     train_network,
     test_network,
     train_test_network_loop,
 )
-from src.network.create_network_lightning_2 import create_ff_module
+from src.network.create_network_lightning import create_ff_classifier
 
 import logging
 import warnings
@@ -169,7 +169,7 @@ validloader = torch.utils.data.DataLoader(
 
 # # testing Lightning framework
 
-test_lighting_module = create_ff_module(
+test_lighting_module = create_ff_classifier(
     number_input_features=784,
     number_output_features=10,
     input_dropout_probability=0.2,
@@ -207,13 +207,26 @@ test_lighting_module = create_ff_module(
 # )
 
 simple_profiler = SimpleProfiler(filename="fit_profiling_output")
-trainer = L.Trainer(max_epochs=5, enable_progress_bar=True, logger=True)
+trainer = L.Trainer(max_epochs=5, enable_progress_bar=True, logger=True, profiler=simple_profiler)
 
 if __name__ == "__main__":
     freeze_support()
+    
+    import logging
+    logging.getLogger("lightning").setLevel(logging.ERROR)
+
+    # configure logging at the root level of Lightning
+    logging.getLogger("lightning.pytorch").setLevel(logging.ERROR)
+
+    # configure logging on module level, redirect to file
+    logger = logging.getLogger("lightning.pytorch.core")
+    logger.addHandler(logging.FileHandler("core.log"))
 
     trainer.fit(
         model=test_lighting_module,
         train_dataloaders=trainloader,
         val_dataloaders=validloader,
     )
+    
+    trainer.test(model=test_lighting_module,
+                 dataloaders=testloader)
