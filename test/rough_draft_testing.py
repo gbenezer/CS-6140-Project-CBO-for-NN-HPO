@@ -2,7 +2,8 @@
 import torch
 import torch.nn as nn
 import lightning as L
-from multiprocessing import Process, freeze_support
+import logging
+from multiprocessing import freeze_support
 from torch.profiler import profile, ProfilerActivity
 from lightning.pytorch.profilers import (
     SimpleProfiler,
@@ -52,14 +53,12 @@ from src.network.load_data import get_MNIST_data
 if __name__ == "__main__":
     freeze_support()
 
-    import logging
-
     logging.getLogger("lightning").setLevel(logging.ERROR)
 
     # configure logging at the root level of Lightning
     logging.getLogger("lightning.pytorch").setLevel(logging.ERROR)
 
-    for i in range(4):
+    for i in range(2):
 
         train_set, valid_set, testset, trainloader, validloader, testloader = (
             get_MNIST_data(
@@ -91,6 +90,7 @@ if __name__ == "__main__":
         )
 
         simple_profiler = SimpleProfiler(filename="fit_profiling_output")
+        advanced_profiler = AdvancedProfiler(filename="fit_advanced_profiling_output")
         trainer = L.Trainer(
             max_epochs=20,
             enable_progress_bar=True,
