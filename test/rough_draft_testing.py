@@ -73,6 +73,7 @@ if __name__ == "__main__":
 
         test_lighting_module = create_ff_model(
             task="classification",
+            input_shape=(1, 28, 28),
             number_input_features=784,
             number_output_features=10,
             input_dropout_probability=0.2,
