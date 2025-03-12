@@ -16,6 +16,7 @@ from lightning.pytorch.profilers import (
     AdvancedProfiler,
     PyTorchProfiler,
 )
+from lightning.pytorch.callbacks import ModelSummary
 from torch.utils.tensorboard import SummaryWriter
 
 # reducing some of the precision to hopefully increase performance
@@ -182,7 +183,8 @@ test_lighting_module = create_ff_classifier(
     learning_rate=1e-3,
     beta1=0.9,
     beta2=0.999,
-    w_decay=0)
+    w_decay=0,
+)
 
 # testing_lightning_network = create_ff_pl_network(
 #     loss=criterion,
@@ -206,12 +208,15 @@ test_lighting_module = create_ff_classifier(
 # )
 
 simple_profiler = SimpleProfiler(filename="fit_profiling_output")
-trainer = L.Trainer(max_epochs=5, enable_progress_bar=True, logger=True, profiler=simple_profiler)
+trainer = L.Trainer(
+    max_epochs=20, enable_progress_bar=True, logger=True, profiler=simple_profiler
+)
 
 if __name__ == "__main__":
     freeze_support()
-    
+
     import logging
+
     logging.getLogger("lightning").setLevel(logging.ERROR)
 
     # configure logging at the root level of Lightning
@@ -226,6 +231,5 @@ if __name__ == "__main__":
         train_dataloaders=trainloader,
         val_dataloaders=validloader,
     )
-    
-    trainer.test(model=test_lighting_module,
-                 dataloaders=testloader)
+
+    trainer.test(model=test_lighting_module, dataloaders=testloader)
