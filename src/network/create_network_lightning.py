@@ -1,22 +1,24 @@
 # Functions to output custom neural networks using PyTorch Lightning
 # current restrictions are:
 # - 3 layers (cannot vary due to hierarchical nature of hyperparameter)
-# - uniform activation function across all layers
 # - feedforward
 
 # TODO: finish functionality
 
-# import statements
+# main import statements
 import torch
 from torch import nn
 import lightning as L
-
+from typing_extensions import Literal
 from torchmetrics.functional.classification.accuracy import multiclass_accuracy
+from torchmetrics.functional.regression.mse import mean_squared_error
+from torchmetrics.functional.regression.nrmse import normalized_root_mean_squared_error
 
-# Adaptation of code from https://github.com/pytorch/tutorials/blob/main/intermediate_source/mnist_train_nas.py
-# hopefully to be able to handle more general feedforward architecture for both classification and regression
+# Some code adapted from https://github.com/pytorch/tutorials/blob/main/intermediate_source/mnist_train_nas.py
+# to be able to handle more general feedforward architecture for both classification and regression
 
-def create_ff_classifier(
+def create_ff_model(
+    task: Literal["regression", "classification"],
     number_input_features: int,
     number_output_features: int,
     input_dropout_probability: float,
@@ -33,7 +35,7 @@ def create_ff_classifier(
     w_decay: float,
 ):
 
-    class FeedForwardClassifier(L.LightningModule):
+    class FeedForwardModel(L.LightningModule):
         def __init__(self):
             super().__init__()
 
@@ -71,34 +73,95 @@ def create_ff_classifier(
             yhat = self(x)
             training_loss = loss(yhat, y)
             self.log("training_loss", training_loss, prog_bar=False)
-            self.log("training_loss_total", training_loss, prog_bar=False, reduce_fx="sum")
-            self.log("mean_training_loss", training_loss, prog_bar=False, reduce_fx="mean")
-            preds = torch.argmax(yhat, dim=1)
-            acc = multiclass_accuracy(preds, y, num_classes=number_output_features)
-            self.log("training_accuracy", acc, prog_bar=False)
-            self.log("mean_training_accuracy", acc, prog_bar=False, reduce_fx="mean")
+            self.log(
+                "training_loss_total", training_loss, prog_bar=False, reduce_fx="sum"
+            )
+
+            if task == "classification":
+                preds = torch.argmax(yhat, dim=1)
+                acc = multiclass_accuracy(preds, y, num_classes=number_output_features)
+                self.log("training_accuracy", acc, prog_bar=False)
+
+            elif task == "regression":
+                mse = mean_squared_error(yhat, y, num_outputs=number_output_features)
+                nrmse_mean = normalized_root_mean_squared_error(
+                    yhat, y, normalization="mean", num_outputs=number_output_features
+                )
+                nrmse_range = normalized_root_mean_squared_error(
+                    yhat, y, normalization="range", num_outputs=number_output_features
+                )
+                nrmse_std = normalized_root_mean_squared_error(
+                    yhat, y, normalization="std", num_outputs=number_output_features
+                )
+                self.log("training_mse", mse, prog_bar=False)
+                self.log("training_nrmse_mean", nrmse_mean, prog_bar=False)
+                self.log("training_nrmse_range", nrmse_range, prog_bar=False)
+                self.log("training_nrmse_std", nrmse_std, prog_bar=False)
+
             return training_loss
 
         def validation_step(self, batch, batch_idx):
             x, y = batch
             yhat = self(x)
             validation_loss = loss(yhat, y)
-            preds = torch.argmax(yhat, dim=1)
             self.log("mean_validation_loss", validation_loss, prog_bar=False)
-            self.log("cumulative_validation_loss", validation_loss, prog_bar=False, reduce_fx="sum")
-            acc = multiclass_accuracy(preds, y, num_classes=number_output_features)
-            self.log("mean_validation_accuracy", acc, prog_bar=False)
+            self.log(
+                "cumulative_validation_loss",
+                validation_loss,
+                prog_bar=False,
+                reduce_fx="sum",
+            )
+
+            if task == "classification":
+                preds = torch.argmax(yhat, dim=1)
+                acc = multiclass_accuracy(preds, y, num_classes=number_output_features)
+                self.log("validation_accuracy", acc, prog_bar=False)
+
+            elif task == "regression":
+                mse = mean_squared_error(yhat, y, num_outputs=number_output_features)
+                nrmse_mean = normalized_root_mean_squared_error(
+                    yhat, y, normalization="mean", num_outputs=number_output_features
+                )
+                nrmse_range = normalized_root_mean_squared_error(
+                    yhat, y, normalization="range", num_outputs=number_output_features
+                )
+                nrmse_std = normalized_root_mean_squared_error(
+                    yhat, y, normalization="std", num_outputs=number_output_features
+                )
+                self.log("validation_mse", mse, prog_bar=False)
+                self.log("validation_nrmse_mean", nrmse_mean, prog_bar=False)
+                self.log("validation_nrmse_range", nrmse_range, prog_bar=False)
+                self.log("validation_nrmse_std", nrmse_std, prog_bar=False)
             return validation_loss
-        
+
         def test_step(self, batch, batch_idx):
             x, y = batch
             yhat = self(x)
             test_loss = loss(yhat, y)
-            preds = torch.argmax(yhat, dim=1)
             self.log("mean_test_loss", test_loss, prog_bar=False)
             self.log("cumulative_test_loss", test_loss, prog_bar=False, reduce_fx="sum")
-            acc = multiclass_accuracy(preds, y, num_classes=number_output_features)
-            self.log("mean_test_accuracy", acc, prog_bar=False)
+
+            if task == "classification":
+                preds = torch.argmax(yhat, dim=1)
+                acc = multiclass_accuracy(preds, y, num_classes=number_output_features)
+                self.log("test_accuracy", acc, prog_bar=False)
+
+            elif task == "regression":
+                mse = mean_squared_error(yhat, y, num_outputs=number_output_features)
+                nrmse_mean = normalized_root_mean_squared_error(
+                    yhat, y, normalization="mean", num_outputs=number_output_features
+                )
+                nrmse_range = normalized_root_mean_squared_error(
+                    yhat, y, normalization="range", num_outputs=number_output_features
+                )
+                nrmse_std = normalized_root_mean_squared_error(
+                    yhat, y, normalization="std", num_outputs=number_output_features
+                )
+                self.log("test_mse", mse, prog_bar=False)
+                self.log("test_nrmse_mean", nrmse_mean, prog_bar=False)
+                self.log("test_nrmse_range", nrmse_range, prog_bar=False)
+                self.log("test_nrmse_std", nrmse_std, prog_bar=False)
+
             return test_loss
 
         def configure_optimizers(self):
@@ -110,4 +173,4 @@ def create_ff_classifier(
             )
             return optimizer
 
-    return FeedForwardClassifier()
+    return FeedForwardModel()
