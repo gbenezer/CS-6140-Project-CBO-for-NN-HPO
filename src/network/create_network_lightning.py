@@ -10,6 +10,7 @@
 import torch
 from torch import nn
 import lightning as L
+import time
 
 from torchmetrics.functional.classification.accuracy import multiclass_accuracy
 
@@ -88,7 +89,12 @@ def create_ff_classifier(
         
         def test_step(self, batch, batch_idx):
             x, y = batch
+            self.log("number_parameters", self.num_params, prog_bar=False)
+            inference_start = time.time()
             yhat = self(x)
+            inference_end = time.time()
+            inference_duration = inference_end - inference_start
+            self.log("test_inference_duration", inference_duration, prog_bar=False)
             test_loss = loss(yhat, y)
             preds = torch.argmax(yhat, dim=1)
             self.log("test_loss", test_loss, prog_bar=False)

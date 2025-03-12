@@ -31,7 +31,6 @@ dev = "cuda"
 
 # # importing the correct package defined functions
 from src.network.create_network import create_ff_network
-from src.network.create_network_lightning_original import create_ff_pl_network
 from src.network.train_test_network import (
     train_network,
     test_network,
