@@ -10,7 +10,6 @@
 import torch
 from torch import nn
 import lightning as L
-import time
 
 from torchmetrics.functional.classification.accuracy import multiclass_accuracy
 
@@ -72,9 +71,12 @@ def create_ff_classifier(
             yhat = self(x)
             training_loss = loss(yhat, y)
             self.log("training_loss", training_loss, prog_bar=False)
+            self.log("training_loss_total", training_loss, prog_bar=False, reduce_fx="sum")
+            self.log("mean_training_loss", training_loss, prog_bar=False, reduce_fx="mean")
             preds = torch.argmax(yhat, dim=1)
             acc = multiclass_accuracy(preds, y, num_classes=number_output_features)
             self.log("training_accuracy", acc, prog_bar=False)
+            self.log("mean_training_accuracy", acc, prog_bar=False, reduce_fx="mean")
             return training_loss
 
         def validation_step(self, batch, batch_idx):
@@ -82,24 +84,21 @@ def create_ff_classifier(
             yhat = self(x)
             validation_loss = loss(yhat, y)
             preds = torch.argmax(yhat, dim=1)
-            self.log("validation_loss", validation_loss, prog_bar=False)
+            self.log("mean_validation_loss", validation_loss, prog_bar=False)
+            self.log("cumulative_validation_loss", validation_loss, prog_bar=False, reduce_fx="sum")
             acc = multiclass_accuracy(preds, y, num_classes=number_output_features)
-            self.log("validation_accuracy", acc, prog_bar=False)
+            self.log("mean_validation_accuracy", acc, prog_bar=False)
             return validation_loss
         
         def test_step(self, batch, batch_idx):
             x, y = batch
-            self.log("number_parameters", self.num_params, prog_bar=False)
-            inference_start = time.time()
             yhat = self(x)
-            inference_end = time.time()
-            inference_duration = inference_end - inference_start
-            self.log("test_inference_duration", inference_duration, prog_bar=False)
             test_loss = loss(yhat, y)
             preds = torch.argmax(yhat, dim=1)
-            self.log("test_loss", test_loss, prog_bar=False)
+            self.log("mean_test_loss", test_loss, prog_bar=False)
+            self.log("cumulative_test_loss", test_loss, prog_bar=False, reduce_fx="sum")
             acc = multiclass_accuracy(preds, y, num_classes=number_output_features)
-            self.log("test_accuracy", acc, prog_bar=False)
+            self.log("mean_test_accuracy", acc, prog_bar=False)
             return test_loss
 
         def configure_optimizers(self):
