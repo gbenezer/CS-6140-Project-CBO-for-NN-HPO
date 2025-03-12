@@ -1,9 +1,8 @@
 # Functions to output custom neural networks using PyTorch Lightning
-# current restrictions are:
-# - 3 layers (cannot vary due to hierarchical nature of hyperparameter)
-# - feedforward
-
-# TODO: finish functionality
+# current restrictions/assumptions are:
+# - 3 layers (could be changed in theory)
+# - feedforward (can't be changed easily)
+# - uses only Adam optimizer (could be changed in theory)
 
 # main import statements
 import torch
@@ -43,6 +42,13 @@ def create_ff_model(
             # Create a PyTorch model
             layers = [nn.Flatten(), nn.Dropout(p=input_dropout_probability)]
             width = number_input_features
+            
+            # could be changed so that a list of hidden layer node numbers is passed in
+            # to allow for a variable number of hidden layers
+            # (and same with hidden layer dropout probabilities along with activation functions)
+            
+            # dimensionality of hyperparameter space would change as the number of hidden layers was varied
+            # may explode
             hidden_layers = [
                 hidden_layer_nodes_1,
                 hidden_layer_nodes_2,
@@ -64,8 +70,9 @@ def create_ff_model(
             self.num_params = num_params
             self.model = nn.Sequential(
                 *layers
-            )  # No need to use Relu for the last layer
+            )  
             
+            # for graph tracing
             self.example_input_array = torch.rand(size=input_shape)
 
         def forward(self, x):
