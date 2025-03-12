@@ -174,18 +174,5 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# lightning logs and profiling results should not be uploaded
-lightning_logs/
-
-# ignore this file; only here as reference for tutorial purposes
-# may model some of the network creation code after it
-src/network/example_code_online.py
-
-# ignore checkpoint files
-checkpoints/
-
-# ignore TensorBoard files
-tb_files/
-
-# ignore saved parameter files
-param_files/
+# ignore test log directories
+*_tests/
