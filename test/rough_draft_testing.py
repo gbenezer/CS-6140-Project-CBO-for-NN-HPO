@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import lightning as L
 import logging
+from lightning.pytorch import loggers as pl_loggers
 from multiprocessing import freeze_support
 from torch.profiler import profile, ProfilerActivity
 from lightning.pytorch.profilers import (
@@ -11,16 +12,10 @@ from lightning.pytorch.profilers import (
     PyTorchProfiler,
 )
 
-# reducing some of the precision to hopefully increase performance
-torch.set_float32_matmul_precision("high")
-
 # adding all the modules and submodules to the path
 import sys
 
 sys.path.insert(0, "C:/Users/Gil/Documents/Repositories/Python/CS_6140/Project")
-
-# defining the device
-dev = "cuda"
 
 # # importing the correct package defined functions
 from src.network.create_network_lightning import create_ff_model
@@ -58,7 +53,7 @@ if __name__ == "__main__":
     # configure logging at the root level of Lightning
     logging.getLogger("lightning.pytorch").setLevel(logging.ERROR)
 
-    for i in range(2):
+    for i in range(1):
 
         train_set, valid_set, testset, trainloader, validloader, testloader = (
             get_MNIST_data(
@@ -89,12 +84,18 @@ if __name__ == "__main__":
             w_decay=0,
         )
 
+        # may want to functionalize the construction of a Trainer and loggers if not explicit in future
+        # evaluate_network function
+
+        tensorboard_logger = pl_loggers.TensorBoardLogger(save_dir="tb_logs/", name="logging_tests", log_graph=True)
+        csv_logger = pl_loggers.CSVLogger(save_dir="csv_logs/", name="logging_tests")
+
         simple_profiler = SimpleProfiler(filename="fit_profiling_output")
-        advanced_profiler = AdvancedProfiler(filename="fit_advanced_profiling_output")
+
         trainer = L.Trainer(
-            max_epochs=20,
+            max_epochs=5,
             enable_progress_bar=True,
-            logger=True,
+            logger=[tensorboard_logger, csv_logger],
             profiler=simple_profiler,
         )
 
