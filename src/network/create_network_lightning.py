@@ -19,6 +19,7 @@ from torchmetrics.functional.regression.nrmse import normalized_root_mean_square
 # TODO: Docstring
 # TODO: further commenting
 
+
 def create_ff_model(
     task: Literal["regression", "classification"],
     input_shape: tuple,
@@ -30,13 +31,25 @@ def create_ff_model(
     hidden_layer_nodes_1: int,
     hidden_layer_nodes_2: int,
     hidden_layer_nodes_3: int,
-    activation: nn.Module,
+    activation: Literal["swish", "sigmoid", "relu", "leaky_relu"] | nn.Module,
     loss: nn.modules.loss._Loss,
     learning_rate: float,
     beta1: float,
     beta2: float,
     w_decay: float,
-):
+) -> L.LightningModule:
+
+    # allow for interoperation with Ax parameterization
+    if activation == "sigmoid":
+        activation = nn.Sigmoid()
+    elif activation == "swish":
+        activation = nn.SiLU()
+    elif activation == "relu":
+        activation = nn.ReLU()
+    elif activation == "leaky_relu":
+        activation = (
+            nn.LeakyReLU()
+        )  # set to default negative slope given hierarchical/conditional nature of parameter
 
     class FeedForwardModel(L.LightningModule):
         def __init__(self):
@@ -45,11 +58,11 @@ def create_ff_model(
             # Create a PyTorch model
             layers = [nn.Flatten(), nn.Dropout(p=input_dropout_probability)]
             width = number_input_features
-            
+
             # following could be changed so that a list of hidden layer node numbers is passed in
             # to allow for a variable number of hidden layers
             # (and same with hidden layer dropout probabilities along with activation functions)
-            
+
             # dimensionality of hyperparameter space would change as the number of hidden layers was varied
             # may explode
             hidden_layers = [
@@ -57,7 +70,7 @@ def create_ff_model(
                 hidden_layer_nodes_2,
                 hidden_layer_nodes_3,
             ]
-            
+
             num_params = 0
             for hidden_size in hidden_layers:
                 if hidden_size > 0:
@@ -75,10 +88,8 @@ def create_ff_model(
 
             # Save the model and parameter counts
             self.num_params = num_params
-            self.model = nn.Sequential(
-                *layers
-            )  
-            
+            self.model = nn.Sequential(*layers)
+
             # for graph tracing
             self.example_input_array = torch.rand(size=input_shape)
 
@@ -86,14 +97,12 @@ def create_ff_model(
             return self.model(x)
 
         def training_step(self, batch, batch_idx):
-            
+
             x, y = batch
             yhat = self(x)
             training_loss = loss(yhat, y)
             self.log("training_loss", training_loss)
-            self.log(
-                "training_loss_total", training_loss, reduce_fx="sum"
-            )
+            self.log("training_loss_total", training_loss, reduce_fx="sum")
 
             if task == "classification":
                 preds = torch.argmax(yhat, dim=1)
@@ -119,7 +128,7 @@ def create_ff_model(
             return training_loss
 
         def validation_step(self, batch, batch_idx):
-            
+
             x, y = batch
             yhat = self(x)
             validation_loss = loss(yhat, y)
@@ -129,6 +138,7 @@ def create_ff_model(
                 validation_loss,
                 reduce_fx="sum",
             )
+            self.log("number_parameters", self.num_params, reduce_fx="max")
 
             if task == "classification":
                 preds = torch.argmax(yhat, dim=1)
@@ -153,12 +163,13 @@ def create_ff_model(
             return validation_loss
 
         def test_step(self, batch, batch_idx):
-            
+
             x, y = batch
             yhat = self(x)
             test_loss = loss(yhat, y)
             self.log("mean_test_loss", test_loss)
             self.log("cumulative_test_loss", test_loss, reduce_fx="sum")
+            self.log("number_parameters", self.num_params, reduce_fx="max")
 
             if task == "classification":
                 preds = torch.argmax(yhat, dim=1)
@@ -194,6 +205,7 @@ def create_ff_model(
 
     return FeedForwardModel()
 
+
 def create_ff_model_varied_layers(
     task: Literal["regression", "classification"],
     input_shape: tuple,
@@ -210,7 +222,7 @@ def create_ff_model_varied_layers(
     beta2: float,
     w_decay: float,
 ):
-    
+
     # TODO: more explicitly restrict activations variable
     # TODO: explicitly check on number of activations versus number of layers
 
@@ -221,7 +233,7 @@ def create_ff_model_varied_layers(
             # Create a PyTorch model
             layers = [nn.Flatten(), nn.Dropout(p=input_dropout_probability)]
             width = number_input_features
-            
+
             num_params = 0
             for idx, hidden_size in enumerate(hidden_layer_nodes):
                 if hidden_size > 0:
@@ -239,10 +251,8 @@ def create_ff_model_varied_layers(
 
             # Save the model and parameter counts
             self.num_params = num_params
-            self.model = nn.Sequential(
-                *layers
-            )  
-            
+            self.model = nn.Sequential(*layers)
+
             # for graph tracing
             self.example_input_array = torch.rand(size=input_shape)
 
@@ -250,14 +260,12 @@ def create_ff_model_varied_layers(
             return self.model(x)
 
         def training_step(self, batch, batch_idx):
-            
+
             x, y = batch
             yhat = self(x)
             training_loss = loss(yhat, y)
             self.log("training_loss", training_loss)
-            self.log(
-                "training_loss_total", training_loss, reduce_fx="sum"
-            )
+            self.log("training_loss_total", training_loss, reduce_fx="sum")
 
             if task == "classification":
                 preds = torch.argmax(yhat, dim=1)
@@ -283,7 +291,7 @@ def create_ff_model_varied_layers(
             return training_loss
 
         def validation_step(self, batch, batch_idx):
-            
+
             x, y = batch
             yhat = self(x)
             validation_loss = loss(yhat, y)
@@ -317,7 +325,7 @@ def create_ff_model_varied_layers(
             return validation_loss
 
         def test_step(self, batch, batch_idx):
-            
+
             x, y = batch
             yhat = self(x)
             test_loss = loss(yhat, y)
