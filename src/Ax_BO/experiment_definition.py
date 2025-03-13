@@ -91,8 +91,6 @@ MNIST_parameters = [
     },
 ]
 
-# TODO: assess how the fidelity setting works
-# TODO: decide on regression problem to tackle
 # TODO: define hyperparameter domain for regression problem
 budget_variables = [
     {
@@ -108,8 +106,6 @@ budget_variables = [
         "bounds": [0.1, 1.0],
         "value_type": "float",
         "log_scale": False,
-        "is_fidelity": True,
-        "target_value": 1.0
     },
 ]
 
