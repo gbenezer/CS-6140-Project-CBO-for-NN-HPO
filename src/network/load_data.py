@@ -4,8 +4,10 @@ import torchvision.transforms.v2 as transforms
 from sklearn.preprocessing import normalize, scale
 import torch.utils.data as data
 import torch
+import pandas as pd
 from torchvision import datasets
 from ucimlrepo import fetch_ucirepo
+from multiprocessing import freeze_support
 
 
 def get_MNIST_data(
@@ -75,6 +77,104 @@ def get_MNIST_data(
     return train_set, valid_set, testset, trainloader, validloader, testloader
 
 
+# define Dataset class for Superconductivity data
+class SuperconductivityDataset(data.Dataset):
+    def __init__(
+        self,
+        transform=transforms.Compose(
+            [transforms.ToImage(), transforms.ToDtype(torch.float)]
+        ),
+        target_transform=transforms.Compose(
+            [transforms.ToImage(), transforms.ToDtype(torch.float)]
+        ),
+        normalize_samples=True,
+        standardize_features=True,
+    ):
+        super().__init__()
+        self.data_object = fetch_ucirepo(id=464)
+        self.features = self.data_object.data.features
+        self.targets = self.data_object.data.targets
+        self.feature_ndarray = self.features.to_numpy()
+        if standardize_features:
+            self.feature_ndarray = scale(self.feature_ndarray)
+        self.target_ndarray = self.targets.to_numpy().squeeze()
+        self.transform = transform
+        self.normalize_samples = normalize_samples
+        self.target_transform = target_transform
+        self.metadata = self.data_object.metadata
+        self.variables = self.data_object.variables
+        self.number_samples = self.features.shape[0]
+        self.number_features = self.features.shape[1]
+
+    def __len__(self):
+        return self.number_samples
+
+    def __getitem__(self, index):
+
+        # get sample and target
+        sample = self.feature_ndarray[index, :].reshape(1, -1)
+        target = self.target_ndarray[index]
+
+        # normalize vector if necessary
+        if self.normalize_samples:
+            sample = normalize(sample)
+
+        # transform sample and target to torch.Tensor
+        sample = self.transform(sample)
+        target = self.target_transform(target)
+        return sample, target
+
+
+class LocalSuperconductivityDataset(data.Dataset):
+    def __init__(
+        self,
+        transform=transforms.Compose(
+            [transforms.ToImage(), transforms.ToDtype(torch.float)]
+        ),
+        target_transform=transforms.Compose(
+            [transforms.ToImage(), transforms.ToDtype(torch.float)]
+        ),
+        normalize_samples=True,
+        standardize_features=True,
+    ):
+        super().__init__()
+        self.data_object = pd.read_csv(
+            "C:\\Users\\Gil\\Documents\\Repositories\\Python\\CS_6140\\Project\\external_data\\superconductivty_data\\train.csv"
+        )
+        self.unique_molecules = pd.read_csv(
+            "C:\\Users\\Gil\\Documents\\Repositories\\Python\\CS_6140\\Project\\external_data\\superconductivty_data\\unique_m.csv"
+        )
+        self.features = self.data_object.iloc[:, 0:81]
+        self.targets = self.data_object.iloc[:, 81]
+        self.feature_ndarray = self.features.to_numpy()
+        if standardize_features:
+            self.feature_ndarray = scale(self.feature_ndarray)
+        self.target_ndarray = self.targets.to_numpy().squeeze()
+        self.transform = transform
+        self.normalize_samples = normalize_samples
+        self.target_transform = target_transform
+        self.number_samples = self.features.shape[0]
+        self.number_features = self.features.shape[1]
+
+    def __len__(self):
+        return self.number_samples
+
+    def __getitem__(self, index):
+
+        # get sample and target
+        sample = self.feature_ndarray[index, :].reshape(1, -1)
+        target = self.target_ndarray[index]
+
+        # normalize vector if necessary
+        if self.normalize_samples:
+            sample = normalize(sample)
+
+        # transform sample and target to torch.Tensor
+        sample = self.transform(sample)
+        target = self.target_transform(target).squeeze()
+        return sample, target
+
+
 # TODO: possibly incorporate external_data/superconductivity_data/unique_m.csv
 def get_Superconductivity_data(
     valid_fraction: float,
@@ -82,53 +182,14 @@ def get_Superconductivity_data(
     random_seed: int,
     n_workers: int,
     batch_n: int,
+    local = False,
 ):
 
-    # define Dataset class for Superconductivity data
-    class SuperconductivityDataset(data.Dataset):
-        def __init__(
-            self,
-            transform=transforms.Compose([transforms.ToImage(), transforms.ToDtype(torch.float)]),
-            target_transform=transforms.Compose([transforms.ToImage(), transforms.ToDtype(torch.float)]),
-            normalize_samples=True,
-            standardize_features=True,
-        ):
-            super().__init__()
-            self.data_object = fetch_ucirepo(id=464)
-            self.features = self.data_object.data.features
-            self.targets = self.data_object.data.targets
-            self.feature_ndarray = self.features.to_numpy()
-            if standardize_features:
-                self.feature_ndarray = scale(self.feature_ndarray)
-            self.target_ndarray = self.targets.to_numpy().squeeze()
-            self.transform = transform
-            self.normalize_samples = normalize_samples
-            self.target_transform = target_transform
-            self.metadata = self.data_object.metadata
-            self.variables = self.data_object.variables
-            self.number_samples = self.features.shape[0]
-            self.number_features = self.features.shape[1]
-
-        def __len__(self):
-            return self.number_samples
-
-        def __getitem__(self, index):
-
-            # get sample and target
-            sample = self.feature_ndarray[index, :]
-            target = self.target_ndarray[index]
-
-            # normalize vector if necessary
-            if self.normalize_samples:
-                sample = normalize(sample)
-
-            # transform sample and target to torch.Tensor
-            sample = self.transform(sample)
-            target = self.target_transform(target)
-            return sample, target
-
     # instantiating the full dataset
-    full_dataset = SuperconductivityDataset()
+    if local:
+        full_dataset = LocalSuperconductivityDataset()
+    else:
+        full_dataset = SuperconductivityDataset()
 
     # splitting off the test dataset
     test_size = int(len(full_dataset) * test_fraction)
@@ -179,20 +240,27 @@ def get_Superconductivity_data(
     )
 
 
-(
-    full_dataset,
-    train_set,
-    valid_set,
-    test_set,
-    train_loader,
-    valid_loader,
-    test_loader,
-) = get_Superconductivity_data(
-    valid_fraction=0.2,
-    test_fraction=0.2,
-    random_seed=42,
-    n_workers=15,
-    batch_n=20,
-)
+# if __name__ == "__main__":
+#     freeze_support()
 
-print(full_dataset.features)
+#     (
+#         full,
+#         train,
+#         valid,
+#         test,
+#         trainloader,
+#         validloader,
+#         testloader,
+#     ) = get_Superconductivity_data(
+#         valid_fraction=0.2,
+#         test_fraction=0.2,
+#         random_seed=42,
+#         n_workers=15,
+#         batch_n=20,
+#         local=True
+#     )
+
+#     for i in range(3):
+#         train_features, train_labels = next(iter(trainloader))
+#         print(f"Feature batch shape: {train_features.size()}")
+#         print(f"Labels batch shape: {train_labels.size()}")
