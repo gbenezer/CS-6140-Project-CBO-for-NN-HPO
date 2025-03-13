@@ -7,6 +7,7 @@
 
 # TODO: find way to extract metrics from TensorBoard and other logs
 # NOTE: naming/organization of lightning log directory likely needs to be handled by Ax/BoTorch portion
+# TODO: modularize/functionalize code to accept hyperparameters and output metrics directly in a way that Ax can process
 
 from pathlib import Path
 import logging
@@ -16,6 +17,8 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import lightning as L
+import ax.modelbridge.dispatch_utils
+import ax.service.utils.instantiation
 from lightning.pytorch import loggers as pl_loggers
 from multiprocessing import freeze_support
 from lightning.pytorch.profilers import SimpleProfiler
@@ -37,6 +40,8 @@ if __name__ == "__main__":
     # remove sanity check and other extraneous stout printing
     logging.getLogger("lightning").setLevel(logging.WARNING)
     logging.getLogger("lightning.pytorch").setLevel(logging.WARNING)
+    logging.getLogger("ax.modelbridge.dispatch_utils").setLevel(logging.WARNING)
+    logging.getLogger("ax.service.utils.instantiation").setLevel(logging.WARNING)
 
     train_set, valid_set, testset, trainloader, validloader, testloader = (
         get_MNIST_data(
@@ -67,12 +72,12 @@ if __name__ == "__main__":
 
         tensorboard_logger = pl_loggers.TensorBoardLogger(
             save_dir="tb_logs/",
-            name="sampling_tests",
+            name="sampling_tests_2",
             log_graph=True,
         )
         csv_logger = pl_loggers.CSVLogger(
             save_dir="csv_logs/",
-            name="sampling_tests",
+            name="sampling_tests_2",
         )
         tensorboard_dir_path = Path(tensorboard_logger.log_dir)
         checkpoint_dir_path = tensorboard_dir_path / "checkpoints"
@@ -81,7 +86,7 @@ if __name__ == "__main__":
         simple_profiler = SimpleProfiler(filename="profiling_output")
 
         trainer = L.Trainer(
-            max_epochs=5,
+            max_epochs=20,
             enable_progress_bar=True,
             logger=[tensorboard_logger, csv_logger],
             profiler=simple_profiler,
