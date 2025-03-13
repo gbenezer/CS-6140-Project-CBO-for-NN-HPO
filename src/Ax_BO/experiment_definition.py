@@ -5,6 +5,8 @@ from ax.modelbridge.factory import get_sobol
 # hopefully gets rid of printed output
 logging.getLogger("ax.service").setLevel(logging.WARNING)
 logging.getLogger("ax.modelbridge").setLevel(logging.WARNING)
+logging.getLogger("ax.modelbridge.dispatch_utils").setLevel(logging.WARNING)
+logging.getLogger("ax.service.utils.instantiation").setLevel(logging.WARNING)
 
 ax_client = AxClient(verbose_logging=False)
 
@@ -142,7 +144,7 @@ space_filling_random_sampler = get_sobol(
     search_space=ax_client.experiment.search_space, seed=0
 )
 
-random_sample = space_filling_random_sampler.gen(n=10)
+random_sample = space_filling_random_sampler.gen(n=20)
 random_sample_parameter_list = [arm.parameters for arm in random_sample.arms]
 
 # # these arm parameter dictionaries can be unpacked with double asterisks to enable function calls with kwargs
