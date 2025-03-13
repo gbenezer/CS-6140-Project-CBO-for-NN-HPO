@@ -176,3 +176,4 @@ cython_debug/
 
 # ignore test log directories
 *_tests/
+*_tests_*/
