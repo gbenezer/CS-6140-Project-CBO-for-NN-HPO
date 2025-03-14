@@ -33,6 +33,14 @@ from src.network.load_data import get_MNIST_data
 from src.network.create_network_lightning import create_ff_model
 from src.Ax_BO.experiment_definition import random_sample_parameter_list
 
+# MNIST_multiobjective = {
+#     "test_accuracy": ObjectiveProperties(minimize=False, threshold=0.9),
+#     "number_parameters": ObjectiveProperties(minimize=True),
+#     "training_time": ObjectiveProperties(minimize=True),
+#     "checkpoint_size": ObjectiveProperties(minimize=True),
+# }
+# "\{metric_name -> (mean, SEM)\}"
+# {"hartmann6": (hartmann6(x), 0.0), "l2norm": (np.sqrt((x**2).sum()), 0.0)}
 
 if __name__ == "__main__":
     freeze_support()
