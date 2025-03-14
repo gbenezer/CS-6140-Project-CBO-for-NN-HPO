@@ -94,7 +94,9 @@ def create_ff_model(
             self.example_input_array = torch.rand(size=input_shape)
 
         def forward(self, x):
-            return self.model(x)
+            x = self.model(x)
+            # x = torch.squeeze(x)
+            return x
 
         def training_step(self, batch, batch_idx):
 
@@ -257,7 +259,9 @@ def create_ff_model_varied_layers(
             self.example_input_array = torch.rand(size=input_shape)
 
         def forward(self, x):
-            return self.model(x)
+            x = self.model(x)
+            # x = torch.squeeze(x)
+            return x
 
         def training_step(self, batch, batch_idx):
 
