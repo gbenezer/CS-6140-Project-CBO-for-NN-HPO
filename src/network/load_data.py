@@ -5,6 +5,7 @@ from sklearn.preprocessing import normalize, scale
 import torch.utils.data as data
 import torch
 import pandas as pd
+import numpy as np
 from torchvision import datasets
 from ucimlrepo import fetch_ucirepo
 from multiprocessing import freeze_support
@@ -97,7 +98,7 @@ class SuperconductivityDataset(data.Dataset):
         self.feature_ndarray = self.features.to_numpy()
         if standardize_features:
             self.feature_ndarray = scale(self.feature_ndarray)
-        self.target_ndarray = self.targets.to_numpy().squeeze()
+        self.target_ndarray = self.targets.to_numpy().squeeze().astype(dtype=np.float32)
         self.transform = transform
         self.normalize_samples = normalize_samples
         self.target_transform = target_transform
@@ -149,7 +150,7 @@ class LocalSuperconductivityDataset(data.Dataset):
         self.feature_ndarray = self.features.to_numpy()
         if standardize_features:
             self.feature_ndarray = scale(self.feature_ndarray)
-        self.target_ndarray = self.targets.to_numpy().squeeze()
+        self.target_ndarray = self.targets.to_numpy().squeeze().astype(dtype=np.float32)
         self.transform = transform
         self.normalize_samples = normalize_samples
         self.target_transform = target_transform
@@ -182,7 +183,7 @@ def get_Superconductivity_data(
     random_seed: int,
     n_workers: int,
     batch_n: int,
-    local = False,
+    local=False,
 ):
 
     # instantiating the full dataset
