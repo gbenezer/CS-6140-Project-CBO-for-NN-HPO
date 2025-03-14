@@ -8,7 +8,6 @@ import pandas as pd
 import numpy as np
 from torchvision import datasets
 from ucimlrepo import fetch_ucirepo
-from multiprocessing import freeze_support
 
 
 def get_MNIST_data(
