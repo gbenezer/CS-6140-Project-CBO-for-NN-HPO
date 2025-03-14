@@ -171,7 +171,7 @@ class LocalSuperconductivityDataset(data.Dataset):
 
         # transform sample and target to torch.Tensor
         sample = self.transform(sample)
-        target = self.target_transform(target).squeeze()
+        target = self.target_transform(target)
         return sample, target
 
 
@@ -238,29 +238,3 @@ def get_Superconductivity_data(
         valid_loader,
         test_loader,
     )
-
-
-# if __name__ == "__main__":
-#     freeze_support()
-
-#     (
-#         full,
-#         train,
-#         valid,
-#         test,
-#         trainloader,
-#         validloader,
-#         testloader,
-#     ) = get_Superconductivity_data(
-#         valid_fraction=0.2,
-#         test_fraction=0.2,
-#         random_seed=42,
-#         n_workers=15,
-#         batch_n=20,
-#         local=True
-#     )
-
-#     for i in range(3):
-#         train_features, train_labels = next(iter(trainloader))
-#         print(f"Feature batch shape: {train_features.size()}")
-#         print(f"Labels batch shape: {train_labels.size()}")
