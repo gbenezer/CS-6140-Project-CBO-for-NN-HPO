@@ -130,7 +130,7 @@ def evaluate_hyperparameters(
     # number of parameters is an integer and has no standard error of mean (std / sqrt(n))
     output_dict = {"number_parameters": (int(number_parameters), 0.0)}
     
-    # calculating and adding metrics and their SEMS
+    # calculating and adding metrics and their SEMs
     output_dict["training_time"] = (
         np.mean(training_times),
         np.std(training_times) / np.sqrt(float(len(training_times))),

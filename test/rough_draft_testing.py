@@ -85,7 +85,7 @@ if __name__ == "__main__":
             number_output_features = 1,
             loss=nn.HuberLoss(),
             log_dir_name="hyperparam_evaluation_tests/test_3",
-            num_rep=1,
+            num_rep=3,
             max_epochs=5,
             parameterization=Superconductivity_status_quo_parameters,
         )
