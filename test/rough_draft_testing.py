@@ -1,5 +1,6 @@
 # standard imports
 import torch
+import time
 import torch.nn as nn
 import lightning as L
 import logging
@@ -19,7 +20,7 @@ sys.path.insert(0, "C:/Users/Gil/Documents/Repositories/Python/CS_6140/Project")
 
 # # importing the correct package defined functions
 from src.network.create_network_lightning import create_ff_model
-from src.network.load_data import get_MNIST_data
+from src.network.load_data import get_MNIST_data, get_Superconductivity_data
 
 
 # portions of code that need to be modularized in the network subpackage
@@ -54,55 +55,126 @@ if __name__ == "__main__":
     logging.getLogger("lightning.pytorch").setLevel(logging.ERROR)
 
     for i in range(1):
+        
+        # # MNIST task (currently working)
 
-        train_set, valid_set, testset, trainloader, validloader, testloader = (
-            get_MNIST_data(
-                valid_fraction=0.2,
-                random_seed=42,
-                n_workers=15,
-                batch_n=64,
-                download_data=False,
-            )
+        # MNIST_load_start = time.time()
+        # train_set, valid_set, testset, trainloader, validloader, testloader = (
+        #     get_MNIST_data(
+        #         valid_fraction=0.2,
+        #         random_seed=42,
+        #         n_workers=15,
+        #         batch_n=64,
+        #         download_data=False,
+        #     )
+        # )
+        # MNIST_load_end = time.time()
+        # print("MNIST Load Time:", (MNIST_load_end - MNIST_load_start)/60.0)
+
+        # test_lighting_module = create_ff_model(
+        #     task="classification",
+        #     input_shape=(1, 28, 28),
+        #     number_input_features=784,
+        #     number_output_features=10,
+        #     input_dropout_probability=0.2,
+        #     hidden_dropout_probability=0.5,
+        #     output_dropout_probability=0.1,
+        #     hidden_layer_nodes_1=500,
+        #     hidden_layer_nodes_2=100,
+        #     hidden_layer_nodes_3=50,
+        #     activation=nn.ReLU(),
+        #     loss=nn.CrossEntropyLoss(),
+        #     learning_rate=1e-3,
+        #     beta1=0.9,
+        #     beta2=0.999,
+        #     w_decay=0,
+        # )
+
+        # # # may want to functionalize the construction of a Trainer and loggers if not explicit in future
+        # # # evaluate_network function
+
+        # tensorboard_logger = pl_loggers.TensorBoardLogger(
+        #     save_dir="tb_logs/", name="tests", log_graph=True
+        # )
+        # csv_logger = pl_loggers.CSVLogger(save_dir="csv_logs/", name="tests")
+
+        # simple_profiler = SimpleProfiler(filename="fit_profiling_output")
+
+        # trainer = L.Trainer(
+        #     max_epochs=5,
+        #     enable_progress_bar=True,
+        #     logger=[tensorboard_logger, csv_logger],
+        #     profiler=simple_profiler,
+        # )
+
+        # trainer.fit(
+        #     model=test_lighting_module,
+        #     train_dataloaders=trainloader,
+        #     val_dataloaders=validloader,
+        # )
+
+        # trainer.test(model=test_lighting_module, dataloaders=testloader)
+        
+        
+        # Superconductivity regression task (WORKS)
+        
+        s_start = time.time()
+        (
+            full_super,
+            train_super,
+            valid_super,
+            test_super,
+            train_s_loader,
+            valid_s_loader,
+            test_s_loader,
+        ) = get_Superconductivity_data(
+            valid_fraction=0.2,
+            test_fraction=0.2,
+            random_seed=0,
+            n_workers=15,
+            batch_n=20,
+            local=False,
         )
+        s_end = time.time()
+        print("Superconductivity Load Time:", (s_end - s_start)/60.0)
 
-        test_lighting_module = create_ff_model(
-            task="classification",
-            input_shape=(1, 28, 28),
-            number_input_features=784,
-            number_output_features=10,
-            input_dropout_probability=0.2,
-            hidden_dropout_probability=0.5,
+        test_lighting_module_regression = create_ff_model(
+            task="regression",
+            input_shape=(1, 1, 81),
+            number_input_features=81,
+            number_output_features=1,
+            input_dropout_probability=0.1,
+            hidden_dropout_probability=0.2,
             output_dropout_probability=0.1,
-            hidden_layer_nodes_1=500,
-            hidden_layer_nodes_2=100,
-            hidden_layer_nodes_3=50,
+            hidden_layer_nodes_1=27,
+            hidden_layer_nodes_2=9,
+            hidden_layer_nodes_3=3,
             activation=nn.ReLU(),
-            loss=nn.CrossEntropyLoss(),
+            loss=nn.HuberLoss(),
             learning_rate=1e-3,
             beta1=0.9,
             beta2=0.999,
             w_decay=0,
         )
-
-        # may want to functionalize the construction of a Trainer and loggers if not explicit in future
-        # evaluate_network function
-
-        tensorboard_logger = pl_loggers.TensorBoardLogger(save_dir="tb_logs/", name="logging_tests", log_graph=True)
-        csv_logger = pl_loggers.CSVLogger(save_dir="csv_logs/", name="logging_tests")
+        
+        tensorboard_logger = pl_loggers.TensorBoardLogger(
+            save_dir="tb_logs/", name="tests", log_graph=True
+        )
+        csv_logger = pl_loggers.CSVLogger(save_dir="csv_logs/", name="tests")
 
         simple_profiler = SimpleProfiler(filename="fit_profiling_output")
 
         trainer = L.Trainer(
-            max_epochs=5,
+            max_epochs=20,
             enable_progress_bar=True,
             logger=[tensorboard_logger, csv_logger],
             profiler=simple_profiler,
         )
 
         trainer.fit(
-            model=test_lighting_module,
-            train_dataloaders=trainloader,
-            val_dataloaders=validloader,
+            model=test_lighting_module_regression,
+            train_dataloaders=train_s_loader,
+            val_dataloaders=valid_s_loader,
         )
 
-        trainer.test(model=test_lighting_module, dataloaders=testloader)
+        trainer.test(model=test_lighting_module_regression, dataloaders=test_s_loader)
