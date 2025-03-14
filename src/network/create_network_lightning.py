@@ -95,7 +95,7 @@ def create_ff_model(
 
         def forward(self, x):
             x = self.model(x)
-            # x = torch.squeeze(x)
+            x = torch.squeeze(x)
             return x
 
         def training_step(self, batch, batch_idx):
@@ -260,7 +260,7 @@ def create_ff_model_varied_layers(
 
         def forward(self, x):
             x = self.model(x)
-            # x = torch.squeeze(x)
+            x = torch.squeeze(x)
             return x
 
         def training_step(self, batch, batch_idx):
