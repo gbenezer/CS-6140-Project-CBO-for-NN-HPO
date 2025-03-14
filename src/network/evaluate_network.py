@@ -5,132 +5,164 @@
 # and inference memory performance as three separate objective functions
 # Inference time and memory utilization are subject to more noise, so that may be a consideration
 
-# TODO: find way to extract metrics from TensorBoard and other logs
-# NOTE: naming/organization of lightning log directory likely needs to be handled by Ax/BoTorch portion
-# TODO: modularize/functionalize code to accept hyperparameters and output metrics directly in a way that Ax can process
+# TODO: function type annotation
 
 from pathlib import Path
-import logging
 import time
 import os
 import pandas as pd
-import torch
-import torch.nn as nn
+import numpy as np
 import lightning as L
-import ax.modelbridge.dispatch_utils
-import ax.service.utils.instantiation
 from lightning.pytorch import loggers as pl_loggers
-from multiprocessing import freeze_support
 from lightning.pytorch.profilers import SimpleProfiler
-from lightning.pytorch.callbacks import ModelSummary
 
 # adding all the modules and submodules to the path
 import sys
 
 sys.path.insert(0, "C:/Users/Gil/Documents/Repositories/Python/CS_6140/Project")
 
-from src.network.load_data import get_MNIST_data
 from src.network.create_network_lightning import create_ff_model
-from src.Ax_BO.experiment_definition import random_sample_parameter_list
 
-# MNIST_multiobjective = {
-#     "test_accuracy": ObjectiveProperties(minimize=False, threshold=0.9),
-#     "number_parameters": ObjectiveProperties(minimize=True),
-#     "training_time": ObjectiveProperties(minimize=True),
-#     "checkpoint_size": ObjectiveProperties(minimize=True),
-# }
-# "\{metric_name -> (mean, SEM)\}"
-# {"hartmann6": (hartmann6(x), 0.0), "l2norm": (np.sqrt((x**2).sum()), 0.0)}
 
-if __name__ == "__main__":
-    freeze_support()
+def evaluate_hyperparameters(
+    task,
+    train_loader,
+    valid_loader,
+    test_loader,
+    input_shape,
+    number_input_features,
+    number_output_features,
+    loss,
+    log_dir_name,
+    num_rep,
+    max_epochs,
+    parameterization,
+):
 
-    # remove sanity check and other extraneous stout printing
-    logging.getLogger("lightning").setLevel(logging.WARNING)
-    logging.getLogger("lightning.pytorch").setLevel(logging.WARNING)
-    logging.getLogger("ax.modelbridge.dispatch_utils").setLevel(logging.WARNING)
-    logging.getLogger("ax.service.utils.instantiation").setLevel(logging.WARNING)
+    # define some lists to keep track of outputs
+    training_times = []
+    validation_times = []
+    testing_times = []
+    validation_outputs = []
+    testing_outputs = []
+    checkpoint_sizes = []
 
-    train_set, valid_set, testset, trainloader, validloader, testloader = (
-        get_MNIST_data(
-            valid_fraction=0.2,
-            random_seed=42,
-            n_workers=15,
-            batch_n=64,
-            download_data=False,
-        )
-    )
-    
-    for parameter_dictionary in random_sample_parameter_list:
+    for rep in range(num_rep):
 
-        test_lighting_module = create_ff_model(
-            task="classification",
-            input_shape=(1, 28, 28),
-            number_input_features=784,
-            number_output_features=10,
-            loss=nn.CrossEntropyLoss(),
-            **parameter_dictionary
+        # generate the LightningModule
+        # TODO: allow for the use of the create_ff_model_varied_layers function
+
+        test_module = create_ff_model(
+            task=task,
+            input_shape=input_shape,
+            number_input_features=number_input_features,
+            number_output_features=number_output_features,
+            loss=loss,
+            **parameterization,
         )
 
-        print("params:", test_lighting_module.num_params)
-        print("model:", test_lighting_module.model)
-
-        # may want to functionalize the construction of a Trainer and loggers if not explicit in future
-        # evaluate_network function
-
+        # create the loggers and profiler
         tensorboard_logger = pl_loggers.TensorBoardLogger(
             save_dir="tb_logs/",
-            name="sampling_tests_2",
+            name=log_dir_name,
+            version=f"replicate_{rep}",
             log_graph=True,
         )
         csv_logger = pl_loggers.CSVLogger(
             save_dir="csv_logs/",
-            name="sampling_tests_2",
+            name=log_dir_name,
+            version=f"replicate_{rep}",
         )
+
         tensorboard_dir_path = Path(tensorboard_logger.log_dir)
         checkpoint_dir_path = tensorboard_dir_path / "checkpoints"
-        csv_dir_path = Path(csv_logger.log_dir)
-
         simple_profiler = SimpleProfiler(filename="profiling_output")
 
+        # create Trainer
         trainer = L.Trainer(
-            max_epochs=20,
+            max_epochs=max_epochs,
             enable_progress_bar=True,
             logger=[tensorboard_logger, csv_logger],
             profiler=simple_profiler,
-            callbacks=[ModelSummary(max_depth=2)],
         )
 
+        # train the module and calculate training time
         fit_start = time.time()
 
         trainer.fit(
-            model=test_lighting_module,
-            train_dataloaders=trainloader,
-            val_dataloaders=validloader,
+            model=test_module,
+            train_dataloaders=train_loader,
+            val_dataloaders=valid_loader,
         )
 
         fit_end = time.time()
-        print("training time:", (fit_end - fit_start) / 60.0)
+        training_time = (fit_end - fit_start) / 60.0
+        training_times.append(training_time)
 
+        # validate the model and capture validation outputs
         validate_start = time.time()
         validation_output = trainer.validate(
-            model=test_lighting_module, dataloaders=validloader
+            model=test_module, dataloaders=valid_loader
         )
         validate_end = time.time()
-        print("validation time:", (validate_end - validate_start) / 60.0)
-        print(validation_output)
+        validation_time = (validate_end - validate_start) / 60.0
+        validation_times.append(validation_time)
+        validation_outputs.append(validation_output[0])
 
+        # test the model and capture test outputs
         test_start = time.time()
-
-        testing_output = trainer.test(model=test_lighting_module, dataloaders=testloader)
-
+        testing_output = trainer.test(model=test_module, dataloaders=test_loader)
         test_end = time.time()
-        print(testing_output)
-
-        print("testing time: ", (test_end - test_start) / 60.0)
+        testing_time = (test_end - test_start) / 60.0
+        testing_times.append(testing_time)
+        testing_outputs.append(testing_output[0])
 
         size = 0
         for file in os.scandir(checkpoint_dir_path):
             size += os.path.getsize(file)
 
-        print("checkpoint size:", size, "bytes")
+        checkpoint_size = size
+        checkpoint_sizes.append(checkpoint_size)
+
+    # getting number of parameters
+    number_parameters = test_module.num_params
+
+    # number of parameters is an integer and has no standard error of mean (std / sqrt(n))
+    output_dict = {"number_parameters": (int(number_parameters), 0.0)}
+    
+    # calculating and adding metrics and their SEMS
+    output_dict["training_time"] = (
+        np.mean(training_times),
+        np.std(training_times) / np.sqrt(float(len(training_times))),
+    )
+    output_dict["validation_time"] = (
+        np.mean(validation_times),
+        np.std(validation_times) / np.sqrt(float(len(validation_times))),
+    )
+    output_dict["testing_time"] = (
+        np.mean(testing_times),
+        np.std(testing_times) / np.sqrt(float(len(testing_times))),
+    )
+    output_dict["checkpoint_size"] = (
+        np.mean(checkpoint_sizes),
+        np.std(checkpoint_sizes) / np.sqrt(float(len(checkpoint_sizes))),
+    )
+
+    # creating single dictionaries from lists of dictionaries through a
+    # DataFrame intermediate
+    validation_dict = pd.DataFrame(validation_outputs).to_dict(orient="list")
+    testing_dict = pd.DataFrame(testing_outputs).to_dict(orient="list")
+    
+    # deleting the number of parameters from each of the dictionaries as it is already in the output dictionary
+    del validation_dict["number_parameters"]
+    del testing_dict["number_parameters"]
+    
+    # summarizing each of the variables in a format according to the expected experiment output
+    validation_summary_dict = {k: (np.mean(v), (np.std(v) / np.sqrt(float(len(v))))) for k, v in validation_dict.items()}
+    testing_summary_dict = {k: (np.mean(v), (np.std(v) / np.sqrt(float(len(v))))) for k, v in testing_dict.items()}
+    
+    # combine all the dictionaries into the output dictionary
+    output_dict.update(validation_summary_dict)
+    output_dict.update(testing_summary_dict)
+
+    return output_dict
