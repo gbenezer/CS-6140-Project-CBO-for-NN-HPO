@@ -8,6 +8,8 @@ logging.getLogger("ax.modelbridge.dispatch_utils").setLevel(logging.WARNING)
 logging.getLogger("ax.service.utils.instantiation").setLevel(logging.WARNING)
 logging.getLogger("ax.service.ax_client").setLevel(logging.WARNING)
 
+# Status quo parameter settings that get really good results
+# (benchmark configurations)
 MNIST_status_quo_parameters = {
     "input_dropout_probability": 0.1,
     "hidden_dropout_probability": 0.5,
@@ -35,6 +37,7 @@ Superconductivity_status_quo_parameters = {
     "w_decay": 0,
 }
 
+# Experimental parameter bounds
 MNIST_parameters = [
     {
         "name": "input_dropout_probability",
@@ -197,6 +200,7 @@ Superconductivity_parameters = [
     },
 ]
 
+# definition and bounds for budget variables just in case
 budget_variables = [
     {
         "name": "max_epochs",
@@ -214,33 +218,47 @@ budget_variables = [
     },
 ]
 
+# Single objective and multiobjective definitions
 MNIST_single_objective = {"test_accuracy": ObjectiveProperties(minimize=False)}
 
 Superconductivity_single_objective = {
     "test_nrmse_mean": ObjectiveProperties(minimize=True)
 }
 
+# TODO: winzorize and/or get thresholds
+
+# For MNIST, valuable configurations have test accuracy at least 90%
+# and training time less than 10 minutes
+# TODO: set thresholds for other objectives
 MNIST_multiobjective = {
     "test_accuracy": ObjectiveProperties(minimize=False, threshold=0.9),
     "number_parameters": ObjectiveProperties(minimize=True),
-    "training_time": ObjectiveProperties(minimize=True),
+    "training_time": ObjectiveProperties(minimize=True, threshold=10.0),
     "checkpoint_size": ObjectiveProperties(minimize=True),
 }
 
+
+# For Superconductivity, valuable configurations have test normalized root mean
+# squared error (relative to mean RMSE, CV(RMSE)) less than 0.5
+# and training time less than 10 minutes
+# TODO: set thresholds for other objectives
 Superconductivity_multiobjective = {
-    "test_nrmse_mean": ObjectiveProperties(minimize=True),
+    "test_nrmse_mean": ObjectiveProperties(minimize=True, threshold=0.5),
     "number_parameters": ObjectiveProperties(minimize=True),
-    "training_time": ObjectiveProperties(minimize=True),
+    "training_time": ObjectiveProperties(minimize=True, threshold=10.0),
     "checkpoint_size": ObjectiveProperties(minimize=True),
 }
 
+# Parameter constraints (relative to each other; bounds are defined in parameters)
 p_constraints = [
     "hidden_layer_nodes_2 <= hidden_layer_nodes_1",
     "hidden_layer_nodes_3 <= hidden_layer_nodes_2",
 ]
 
+# Outcome constraints
 o_constraints = None
 
+# Metrics that are not necessarily objectives but are output by the evaluate hyperparameters function
 general_tracking_metrics = [
     "mean_validation_loss",
     "cumulative_validation_loss",
@@ -265,7 +283,7 @@ regression_metrics = [
     "test_nrmse_std",
 ]
 
-
+# Combinations for actual use in experiments
 classification_tracking_metrics_multi = (
     general_tracking_metrics + classification_metrics
 )
@@ -299,7 +317,8 @@ regression_tracking_metrics_single = (
 # # for arm in random_sample.arms:
 # #     print(arm.parameters)
 
-# creating SearchSpace objects with Service API
+# creating SearchSpace objects with Service API in case of use for
+# random generation of trials with Sobol sampler
 ax_client_Super = AxClient()
 ax_client_MNIST = AxClient()
 
