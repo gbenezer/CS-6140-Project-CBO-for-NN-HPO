@@ -29,32 +29,34 @@ if __name__ == "__main__":
 
     # Classification hyperparameter evaluation testing
     
-    # train_set, valid_set, testset, trainloader, validloader, testloader = (
-    #     get_MNIST_data(
-    #         valid_fraction=0.2,
-    #         random_seed=42,
-    #         n_workers=15,
-    #         batch_n=64,
-    #         download_data=False,
-    #     )
-    # )
+    train_set, valid_set, testset, trainloader, validloader, testloader = (
+        get_MNIST_data(
+            valid_fraction=0.2,
+            random_seed=42,
+            n_workers=15,
+            batch_n=64,
+            download_data=False,
+        )
+    )
     
-    # MNIST_output_dict = (
-    #     evaluate_hyperparameters(
-    #         task="classification",
-    #         train_loader=trainloader,
-    #         valid_loader=validloader,
-    #         test_loader=testloader,
-    #         input_shape=(1, 28, 28),
-    #         number_input_features = 784,
-    #         number_output_features = 10,
-    #         loss=nn.CrossEntropyLoss(),
-    #         log_dir_name="hyperparam_evaluation_tests/test_1",
-    #         num_rep=1,
-    #         max_epochs=5,
-    #         parameterization=MNIST_status_quo_parameters,
-    #     )
-    # )
+    MNIST_output_dict = (
+        evaluate_hyperparameters(
+            task="classification",
+            train_loader=trainloader,
+            valid_loader=validloader,
+            test_loader=testloader,
+            input_shape=(1, 28, 28),
+            number_input_features = 784,
+            number_output_features = 10,
+            loss=nn.CrossEntropyLoss(),
+            log_dir_name="hyperparam_evaluation_tests/test_1",
+            num_rep=1,
+            max_epochs=5,
+            parameterization=MNIST_status_quo_parameters,
+        )
+    )
+    
+    print(MNIST_output_dict)
 
     # Regression hyperparameter evaluation testing
     (
@@ -84,7 +86,7 @@ if __name__ == "__main__":
             number_input_features = 81,
             number_output_features = 1,
             loss=nn.HuberLoss(),
-            log_dir_name="hyperparam_evaluation_tests/test_3",
+            log_dir_name="hyperparam_evaluation_tests/test_2",
             num_rep=3,
             max_epochs=5,
             parameterization=Superconductivity_status_quo_parameters,
