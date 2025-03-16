@@ -23,7 +23,6 @@ sys.path.insert(0, "C:/Users/Gil/Documents/Repositories/Python/CS_6140/Project")
 
 from src.network.create_network_lightning import create_ff_model
 
-
 def evaluate_hyperparameters(
     task,
     train_loader,
@@ -63,13 +62,13 @@ def evaluate_hyperparameters(
 
         # create the loggers and profiler
         tensorboard_logger = pl_loggers.TensorBoardLogger(
-            save_dir="tb_logs/",
+            save_dir="logs/tb_logs/",
             name=log_dir_name,
             version=f"replicate_{rep}",
             log_graph=True,
         )
         csv_logger = pl_loggers.CSVLogger(
-            save_dir="csv_logs/",
+            save_dir="logs/csv_logs/trial_logs",
             name=log_dir_name,
             version=f"replicate_{rep}",
         )
