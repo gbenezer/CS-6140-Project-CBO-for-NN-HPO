@@ -246,6 +246,13 @@ general_tracking_metrics = [
     "cumulative_validation_loss",
     "mean_test_loss",
     "cumulative_test_loss",
+    "testing_time",
+    "validation_time"
+]
+single_objective_added_metrics = [
+    "number_parameters",
+    "training_time",
+    "checkpoint_size",
 ]
 classification_metrics = ["validation_accuracy"]
 regression_metrics = [
@@ -257,8 +264,20 @@ regression_metrics = [
     "test_nrmse_range",
     "test_nrmse_std",
 ]
-classification_tracking_metrics = general_tracking_metrics + classification_metrics
-regression_tracking_metrics = general_tracking_metrics + regression_metrics
+
+
+classification_tracking_metrics_multi = (
+    general_tracking_metrics + classification_metrics
+)
+regression_tracking_metrics_multi = general_tracking_metrics + regression_metrics
+
+
+classification_tracking_metrics_single = (
+    general_tracking_metrics + classification_metrics + single_objective_added_metrics
+)
+regression_tracking_metrics_single = (
+    general_tracking_metrics + regression_metrics + single_objective_added_metrics
+)
 
 # ax_client.create_experiment(
 #     name="regression_testing",
@@ -299,8 +318,6 @@ ax_client_MNIST.create_experiment(
     parameter_constraints=p_constraints,
     outcome_constraints=o_constraints,
 )
-
-ax_client_Super.generation_strategy
 
 MNIST_SearchSpace = ax_client_MNIST.experiment.search_space
 Superconductivity_SearchSpace = ax_client_Super.experiment.search_space
