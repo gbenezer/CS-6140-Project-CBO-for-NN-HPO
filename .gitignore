@@ -174,7 +174,5 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# ignore test log directories
-*_tests/
-*_tests_*/
-tests/
+# ignore log directories in general
+*_logs/
