@@ -1,12 +1,13 @@
 import logging
 from ax.service.ax_client import AxClient, ObjectiveProperties
+from ax.service.utils.instantiation import InstantiationBase
 
-# hopefully gets rid of printed output
-logging.getLogger("ax.service").setLevel(logging.WARNING)
-logging.getLogger("ax.modelbridge").setLevel(logging.WARNING)
-logging.getLogger("ax.modelbridge.dispatch_utils").setLevel(logging.WARNING)
+# # hopefully gets rid of printed output
+# logging.getLogger("ax.service").setLevel(logging.WARNING)
+# logging.getLogger("ax.modelbridge").setLevel(logging.WARNING)
+# logging.getLogger("ax.modelbridge.dispatch_utils").setLevel(logging.WARNING)
 logging.getLogger("ax.service.utils.instantiation").setLevel(logging.WARNING)
-logging.getLogger("ax.service.ax_client").setLevel(logging.WARNING)
+# logging.getLogger("ax.service.ax_client").setLevel(logging.WARNING)
 
 # Status quo parameter settings that get really good results
 # (benchmark configurations)
@@ -297,46 +298,8 @@ regression_tracking_metrics_single = (
     general_tracking_metrics + regression_metrics + single_objective_added_metrics
 )
 
-# ax_client.create_experiment(
-#     name="regression_testing",
-#     parameters=Superconductivity_parameters,
-#     objectives=Superconductivity_single_objective,
-#     parameter_constraints=p_constraints,
-#     outcome_constraints=o_constraints,
-# )
-
-# # creating a random sampler and testing it
-# space_filling_random_sampler = get_sobol(
-#     search_space=ax_client.experiment.search_space, seed=0
-# )
-
-# random_sample = space_filling_random_sampler.gen(n=20)
-# random_sample_parameter_list = [arm.parameters for arm in random_sample.arms]
-
-# # # these arm parameter dictionaries can be unpacked with double asterisks to enable function calls with kwargs
-# # for arm in random_sample.arms:
-# #     print(arm.parameters)
-
-# creating SearchSpace objects with Service API in case of use for
-# random generation of trials with Sobol sampler
-ax_client_Super = AxClient()
-ax_client_MNIST = AxClient()
-
-ax_client_Super.create_experiment(
-    name="Superconductivity_Search_Space_Construction",
-    parameters=Superconductivity_parameters,
-    objectives=Superconductivity_single_objective,
-    parameter_constraints=p_constraints,
-    outcome_constraints=o_constraints,
-)
-
-ax_client_MNIST.create_experiment(
-    name="MNIST_Search_Space_Construction",
-    parameters=MNIST_parameters,
-    objectives=MNIST_single_objective,
-    parameter_constraints=p_constraints,
-    outcome_constraints=o_constraints,
-)
-
-MNIST_SearchSpace = ax_client_MNIST.experiment.search_space
-Superconductivity_SearchSpace = ax_client_Super.experiment.search_space
+# Creating SearchSpace objects from the parameter lists
+MNIST_SearchSpace = InstantiationBase().make_search_space(parameters=MNIST_parameters,
+                                                          parameter_constraints=p_constraints)
+Superconductivity_SearchSpace = InstantiationBase().make_search_space(parameters=Superconductivity_parameters,
+                                                          parameter_constraints=p_constraints)
