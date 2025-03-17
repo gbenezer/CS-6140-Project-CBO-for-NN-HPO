@@ -3,10 +3,11 @@
 # standard imports
 from pathlib import Path
 import os
-from ax.modelbridge.generation_strategy import GenerationStep, GenerationStrategy
 from ax.modelbridge.registry import ModelRegistryBase, Models
 from ax.modelbridge.dispatch_utils import choose_generation_strategy
-from ax.service.ax_client import AxClient, ObjectiveProperties
+from ax.service.ax_client import AxClient
+from ax.global_stopping.strategies import ImprovementGlobalStoppingStrategy
+from ax.exceptions.core import OptimizationShouldStop
 
 
 from ax.plot.contour import interact_contour
@@ -22,6 +23,8 @@ import sys
 sys.path.insert(0, "C:/Users/Gil/Documents/Repositories/Python/CS_6140/Project")
 
 from src.network.evaluate_network import evaluate_hyperparameters
+import src.Ax_BO.threshold_global_stopping as tgs
+
 
 # TODO: figure out how to add tracking metrics for the other metrics I am tracking
 # with AxClient.add_tracking_metrics
@@ -45,6 +48,8 @@ def conduct_experiment(
     max_epochs,
     experiment_name,
     fully_random,
+    interactive_plots,
+    global_early_stop,
     seed,
 ):
 
@@ -63,7 +68,20 @@ def conduct_experiment(
     else:
         gen_strat = None
 
-    ax_client = AxClient(generation_strategy=gen_strat, random_seed=seed)
+    # TODO: configure threshold parameter
+    # TODO: actually implement for early stopping
+    if global_early_stop:
+        gss = tgs.ThresholdGlobalStoppingStrategy(
+            min_trials=1, threshold=0.95
+        )
+    else:
+        gss = None
+
+    ax_client = AxClient(
+        generation_strategy=gen_strat,
+        random_seed=seed,
+        global_stopping_strategy=gss,
+    )
 
     # create the experiment
     ax_client.create_experiment(
@@ -73,7 +91,7 @@ def conduct_experiment(
         parameter_constraints=param_constraints,
         outcome_constraints=out_constraints,
     )
-    
+
     ax_client.add_tracking_metrics(tracking_metrics)
 
     # run the optimization loop
@@ -102,98 +120,38 @@ def conduct_experiment(
     # getting results of experiment
     experiment_df = ax_client.experiment.to_df()
     best_parameters, values = ax_client.get_best_parameters()
-    
+
     # saving the results of the experiment to a CSV file
-    experiment_df.to_csv(Path(os.getcwd()) / "logs" / "csv_logs" / "experiment_logs" / (experiment_name + ".csv"))
+    experiment_df_dir = Path(os.getcwd()) / "logs" / "csv_logs" / "experiment_logs"
+    if not os.path.exists(experiment_df_dir):
+        experiment_df_dir.mkdir(parents=True)
+    experiment_csv_name = experiment_name + ".csv"
+    experiment_df.to_csv(path_or_buf=(experiment_df_dir / experiment_csv_name))
 
+    if interactive_plots:
+        # saving interactive plots (only works if there are non-RandomBridgeModel trials completed)
+        model = ax_client.generation_strategy.model
 
-    # saving interactive plots
-    model = ax_client.generation_strategy.model
+        # TODO: make this configurable
+        plotly_metric_contour = interact_contour(
+            model=model, metric_name="test_accuracy"
+        ).data
+        cv_results = cross_validate(model)
+        plotly_tradeoff = plot_objective_vs_constraints(
+            model, "test_accuracy", rel=False
+        ).data
+        plotly_cv = interact_cross_validation(cv_results).data
+        plotly_tile = interact_fitted(model, rel=False).data
 
-    # TODO: make this configurable
-    plotly_metric_contour = interact_contour(
-        model=model, metric_name="test_accuracy"
-    ).data
-    cv_results = cross_validate(model)
-    plotly_tradeoff = plot_objective_vs_constraints(
-        model, "test_accuracy", rel=False
-    ).data
-    plotly_cv = interact_cross_validation(cv_results).data
-    plotly_tile = interact_fitted(model, rel=False).data
-
-    pio.write_html(
-        fig=plotly_metric_contour,
-        file=plot_directory / "example_test_accuracy_interactive_contour.html",
-    )
-    pio.write_html(
-        fig=plotly_tradeoff,
-        file=plot_directory / "example_tradeoff_interactive_plot.html",
-    )
-    pio.write_html(fig=plotly_cv, file=plot_directory / "example_cv_plot.html")
-    pio.write_html(fig=plotly_tile, file=plot_directory / "example_tile_plot.html")
+        pio.write_html(
+            fig=plotly_metric_contour,
+            file=plot_directory / "example_test_accuracy_interactive_contour.html",
+        )
+        pio.write_html(
+            fig=plotly_tradeoff,
+            file=plot_directory / "example_tradeoff_interactive_plot.html",
+        )
+        pio.write_html(fig=plotly_cv, file=plot_directory / "example_cv_plot.html")
+        pio.write_html(fig=plotly_tile, file=plot_directory / "example_tile_plot.html")
 
     return experiment_df, best_parameters, values
-
-
-import logging
-from multiprocessing import freeze_support
-import torch.nn as nn
-from src.network.load_data import get_MNIST_data, get_Superconductivity_data
-from src.Ax_BO.experiment_definition import (
-    MNIST_parameters,
-    MNIST_SearchSpace,
-    MNIST_single_objective,
-    p_constraints,
-    o_constraints,
-    classification_tracking_metrics_single
-)
-
-from ax.global_stopping.strategies.improvement import ImprovementGlobalStoppingStrategy
-from ax.exceptions.core import OptimizationShouldStop
-
-if __name__ == "__main__":
-    freeze_support()
-
-    # remove sanity check and other extraneous stout printing
-    logging.getLogger("lightning").setLevel(logging.WARNING)
-    logging.getLogger("lightning.pytorch").setLevel(logging.WARNING)
-    logging.getLogger("ax.modelbridge.dispatch_utils").setLevel(logging.WARNING)
-    logging.getLogger("ax.service.utils.instantiation").setLevel(logging.WARNING)
-    logging.getLogger("ax.service.ax_client").setLevel(logging.WARNING)
-
-    train_set, valid_set, testset, trainloader, validloader, testloader = (
-        get_MNIST_data(
-            valid_fraction=0.2,
-            random_seed=42,
-            n_workers=15,
-            batch_n=64,
-            download_data=False,
-        )
-    )
-
-    experiment_df, best_parameters, values = conduct_experiment(
-        task="classification",
-        parameter_space=MNIST_parameters,
-        search_space=MNIST_SearchSpace,
-        objective=MNIST_single_objective,
-        param_constraints=p_constraints,
-        out_constraints=o_constraints,
-        tracking_metrics=classification_tracking_metrics_single,
-        train_loader=trainloader,
-        valid_loader=validloader,
-        test_loader=testloader,
-        input_shape=(1, 28, 28),
-        number_input_features=784,
-        number_output_features=10,
-        loss=nn.CrossEntropyLoss(),
-        max_trials=4,
-        num_reps_per_trial=1,
-        max_epochs=5,
-        experiment_name="MNIST_test",
-        fully_random=False,
-        seed=0,
-    )
-    print(experiment_df)
-    print(best_parameters)
-    print(values)
-    experiment_df.to_csv("test_experiment")
