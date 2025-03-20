@@ -128,13 +128,23 @@ def conduct_experiment(
     # ax_client.should_stop_trials_early
 
     # create the experiment
-    ax_client.create_experiment(
-        name=experiment_name,
-        parameters=parameter_space,
-        objectives=objective,
-        parameter_constraints=param_constraints,
-        outcome_constraints=out_constraints,
-    )
+    if trial_early_stop:
+        ax_client.create_experiment(
+            name=experiment_name,
+            parameters=parameter_space,
+            objectives=objective,
+            parameter_constraints=param_constraints,
+            outcome_constraints=out_constraints,
+            support_intermediate_data=True
+        )
+    else:
+        ax_client.create_experiment(
+            name=experiment_name,
+            parameters=parameter_space,
+            objectives=objective,
+            parameter_constraints=param_constraints,
+            outcome_constraints=out_constraints
+        )
 
     ax_client.add_tracking_metrics(tracking_metrics)
     
@@ -170,7 +180,11 @@ def conduct_experiment(
         )
         
         # test whether or not there are absurd test loss values
-        if trial_data["mean_test_loss"] > test_loss_threshold:
+        if num_reps_per_trial > 1:
+            if trial_data["mean_test_loss"][0] > test_loss_threshold:
+                ax_client.abandon_trial(trial_index=trial_index, reason="mean test loss too high")
+                continue
+        elif trial_data["mean_test_loss"] > test_loss_threshold:
             ax_client.abandon_trial(trial_index=trial_index, reason="mean test loss too high")
             continue
         
@@ -179,6 +193,8 @@ def conduct_experiment(
         # will default to the assumption that the data is noisy (specifically,
         # corrupted by additive zero-mean Gaussian noise) and that the
         # level of noise should be inferred by the optimization model.
+        
+        print(trial_data)
         
         try:
             ax_client.complete_trial(
