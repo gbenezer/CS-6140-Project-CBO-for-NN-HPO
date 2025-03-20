@@ -13,8 +13,8 @@ from ax.utils.measurement.synthetic_functions import hartmann6
 import plotly.io as pio
 pio.renderers.default = "vscode"
 
-interactive_path = Path(os.getcwd()) / "html_plots" / "output_testing_1"
-static_path = Path(os.getcwd()) / "static_plots" / "output_testing_1"
+interactive_path = Path(os.getcwd()) / "plots" / "html_plots" / "output_testing_1"
+static_path = Path(os.getcwd()) / "plots" / "static_plots" / "output_testing_1"
 
 interactive_path.mkdir(parents=True)
 static_path.mkdir(parents=True)
@@ -81,4 +81,4 @@ pio.write_html(fig=plotly_tile,
 # write static plot to svg (directory needs to be generated a priori)
 plotly_static_contour = ax_client.get_contour_plot(param_x="x5", param_y="x6", metric_name="hartmann6").data
 pio.write_image(fig=plotly_static_contour,
-                file=static_path /"example_static_contour", format="pdf")
+                file=static_path /"example_static_contour", format="svg")
