@@ -13,6 +13,7 @@ import os
 import pandas as pd
 import numpy as np
 import lightning as L
+from typing import Literal
 from lightning.pytorch import loggers as pl_loggers
 from lightning.pytorch.profilers import SimpleProfiler
 from lightning.pytorch.callbacks import ModelSummary
@@ -25,7 +26,7 @@ sys.path.insert(0, "C:/Users/Gil/Documents/Repositories/Python/CS_6140/Project")
 from src.network.create_network_lightning import create_ff_model
 
 def evaluate_hyperparameters(
-    task,
+    task: Literal["regression", "classification"],
     train_loader,
     valid_loader,
     test_loader,
