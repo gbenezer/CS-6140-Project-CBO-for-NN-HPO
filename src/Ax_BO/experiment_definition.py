@@ -6,7 +6,7 @@ from ax.service.utils.instantiation import InstantiationBase
 # logging.getLogger("ax.service").setLevel(logging.WARNING)
 # logging.getLogger("ax.modelbridge").setLevel(logging.WARNING)
 # logging.getLogger("ax.modelbridge.dispatch_utils").setLevel(logging.WARNING)
-logging.getLogger("ax.service.utils.instantiation").setLevel(logging.WARNING)
+# logging.getLogger("ax.service.utils.instantiation").setLevel(logging.WARNING)
 # logging.getLogger("ax.service.ax_client").setLevel(logging.WARNING)
 
 # Status quo parameter settings that get really good results
@@ -26,12 +26,12 @@ MNIST_status_quo_parameters = {
 }
 Superconductivity_status_quo_parameters = {
     "input_dropout_probability": 0.1,
-    "hidden_dropout_probability": 0.2,
+    "hidden_dropout_probability": 0.5,
     "output_dropout_probability": 0.1,
-    "hidden_layer_nodes_1": 27,
-    "hidden_layer_nodes_2": 9,
-    "hidden_layer_nodes_3": 3,
-    "activation": "relu",
+    "hidden_layer_nodes_1": 243,
+    "hidden_layer_nodes_2": 81,
+    "hidden_layer_nodes_3": 27,
+    "activation": "leaky_relu",
     "learning_rate": 1e-3,
     "beta1": 0.9,
     "beta2": 0.999,
@@ -145,21 +145,21 @@ Superconductivity_parameters = [
     {
         "name": "hidden_layer_nodes_1",
         "type": "range",
-        "bounds": [10, 200],
+        "bounds": [3, 300],
         "value_type": "int",
         "log_scale": False,
     },
     {
         "name": "hidden_layer_nodes_2",
         "type": "range",
-        "bounds": [10, 200],
+        "bounds": [3, 300],
         "value_type": "int",
         "log_scale": False,
     },
     {
         "name": "hidden_layer_nodes_3",
         "type": "range",
-        "bounds": [10, 200],
+        "bounds": [3, 300],
         "value_type": "int",
         "log_scale": False,
     },
@@ -223,7 +223,7 @@ budget_variables = [
 MNIST_single_objective = {"test_accuracy": ObjectiveProperties(minimize=False)}
 
 Superconductivity_single_objective = {
-    "test_nrmse_mean": ObjectiveProperties(minimize=True)
+    "test_nrmse_range": ObjectiveProperties(minimize=True)
 }
 
 # TODO: winzorize and/or get thresholds
@@ -240,11 +240,12 @@ MNIST_multiobjective = {
 
 
 # For Superconductivity, valuable configurations have test normalized root mean
-# squared error (relative to mean RMSE, CV(RMSE)) less than 0.5
+# squared error (relative to the range; unit normalized) less than 0.3
 # and training time less than 10 minutes
+
 # TODO: set thresholds for other objectives
 Superconductivity_multiobjective = {
-    "test_nrmse_mean": ObjectiveProperties(minimize=True, threshold=0.5),
+    "test_nrmse_range": ObjectiveProperties(minimize=True, threshold=0.3),
     "number_parameters": ObjectiveProperties(minimize=True),
     "training_time": ObjectiveProperties(minimize=True, threshold=10.0),
     "checkpoint_size": ObjectiveProperties(minimize=True),
@@ -280,7 +281,7 @@ regression_metrics = [
     "validation_nrmse_range",
     "validation_nrmse_std",
     "test_mse",
-    "test_nrmse_range",
+    "test_nrmse_mean",
     "test_nrmse_std",
 ]
 
@@ -298,8 +299,8 @@ regression_tracking_metrics_single = (
     general_tracking_metrics + regression_metrics + single_objective_added_metrics
 )
 
-# Creating SearchSpace objects from the parameter lists
-MNIST_SearchSpace = InstantiationBase().make_search_space(parameters=MNIST_parameters,
-                                                          parameter_constraints=p_constraints)
-Superconductivity_SearchSpace = InstantiationBase().make_search_space(parameters=Superconductivity_parameters,
-                                                          parameter_constraints=p_constraints)
+# # Creating SearchSpace objects from the parameter lists
+# MNIST_SearchSpace = InstantiationBase().make_search_space(parameters=MNIST_parameters,
+#                                                           parameter_constraints=p_constraints)
+# Superconductivity_SearchSpace = InstantiationBase().make_search_space(parameters=Superconductivity_parameters,
+#                                                           parameter_constraints=p_constraints)
