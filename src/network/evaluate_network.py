@@ -15,6 +15,7 @@ import numpy as np
 import lightning as L
 from lightning.pytorch import loggers as pl_loggers
 from lightning.pytorch.profilers import SimpleProfiler
+from lightning.pytorch.callbacks import ModelSummary
 
 # adding all the modules and submodules to the path
 import sys
@@ -59,6 +60,7 @@ def evaluate_hyperparameters(
             loss=loss,
             **parameterization,
         )
+        print(test_module.model)
 
         # create the loggers and profiler
         tensorboard_logger = pl_loggers.TensorBoardLogger(
@@ -80,9 +82,10 @@ def evaluate_hyperparameters(
         # create Trainer
         trainer = L.Trainer(
             max_epochs=max_epochs,
-            enable_progress_bar=True,
+            enable_progress_bar=False,
             logger=[tensorboard_logger, csv_logger],
             profiler=simple_profiler,
+            callbacks=[ModelSummary(max_depth=5)]
         )
 
         # train the module and calculate training time
@@ -129,23 +132,30 @@ def evaluate_hyperparameters(
     # number of parameters is an integer and has no standard error of mean (std / sqrt(n))
     output_dict = {"number_parameters": (int(number_parameters), 0.0)}
     
-    # calculating and adding metrics and their SEMs
-    output_dict["training_time"] = (
-        np.mean(training_times),
-        np.std(training_times) / np.sqrt(float(len(training_times))),
-    )
-    output_dict["validation_time"] = (
-        np.mean(validation_times),
-        np.std(validation_times) / np.sqrt(float(len(validation_times))),
-    )
-    output_dict["testing_time"] = (
-        np.mean(testing_times),
-        np.std(testing_times) / np.sqrt(float(len(testing_times))),
-    )
-    output_dict["checkpoint_size"] = (
-        np.mean(checkpoint_sizes),
-        np.std(checkpoint_sizes) / np.sqrt(float(len(checkpoint_sizes))),
-    )
+    if num_rep > 1:
+        # calculating and adding metrics and their SEMs
+        output_dict["training_time"] = (
+            np.mean(training_times),
+            np.std(training_times) / np.sqrt(float(len(training_times))),
+        )
+        output_dict["validation_time"] = (
+            np.mean(validation_times),
+            np.std(validation_times) / np.sqrt(float(len(validation_times))),
+        )
+        output_dict["testing_time"] = (
+            np.mean(testing_times),
+            np.std(testing_times) / np.sqrt(float(len(testing_times))),
+        )
+        output_dict["checkpoint_size"] = (
+            np.mean(checkpoint_sizes),
+            np.std(checkpoint_sizes) / np.sqrt(float(len(checkpoint_sizes))),
+        )
+    else:
+        # calculating and adding metrics without SEMs
+        output_dict["training_time"] = (np.mean(training_times),),
+        output_dict["validation_time"] = (np.mean(validation_times),)
+        output_dict["testing_time"] = (np.mean(testing_times),)
+        output_dict["checkpoint_size"] = (np.mean(checkpoint_sizes),)
 
     # creating single dictionaries from lists of dictionaries through a
     # DataFrame intermediate
@@ -156,9 +166,14 @@ def evaluate_hyperparameters(
     del validation_dict["number_parameters"]
     del testing_dict["number_parameters"]
     
-    # summarizing each of the variables in a format according to the expected experiment output
-    validation_summary_dict = {k: (np.mean(v), (np.std(v) / np.sqrt(float(len(v))))) for k, v in validation_dict.items()}
-    testing_summary_dict = {k: (np.mean(v), (np.std(v) / np.sqrt(float(len(v))))) for k, v in testing_dict.items()}
+    if num_rep > 1:
+        # summarizing each of the variables in a format according to the expected experiment output
+        validation_summary_dict = {k: (np.mean(v), (np.std(v) / np.sqrt(float(len(v))))) for k, v in validation_dict.items()}
+        testing_summary_dict = {k: (np.mean(v), (np.std(v) / np.sqrt(float(len(v))))) for k, v in testing_dict.items()}
+    else:
+        # summarizing each of the variables in a format according to the expected experiment output
+        validation_summary_dict = {k: (np.mean(v),) for k, v in validation_dict.items()}
+        testing_summary_dict = {k: (np.mean(v),) for k, v in testing_dict.items()}
     
     # combine all the dictionaries into the output dictionary
     output_dict.update(validation_summary_dict)
