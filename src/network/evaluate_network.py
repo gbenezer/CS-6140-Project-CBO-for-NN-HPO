@@ -153,10 +153,10 @@ def evaluate_hyperparameters(
         )
     else:
         # calculating and adding metrics without SEMs
-        output_dict["training_time"] = (np.mean(training_times),),
-        output_dict["validation_time"] = (np.mean(validation_times),)
-        output_dict["testing_time"] = (np.mean(testing_times),)
-        output_dict["checkpoint_size"] = (np.mean(checkpoint_sizes),)
+        output_dict["training_time"] = np.mean(training_times)
+        output_dict["validation_time"] = np.mean(validation_times)
+        output_dict["testing_time"] = np.mean(testing_times)
+        output_dict["checkpoint_size"] = np.mean(checkpoint_sizes)
 
     # creating single dictionaries from lists of dictionaries through a
     # DataFrame intermediate
@@ -173,8 +173,8 @@ def evaluate_hyperparameters(
         testing_summary_dict = {k: (np.mean(v), (np.std(v) / np.sqrt(float(len(v))))) for k, v in testing_dict.items()}
     else:
         # summarizing each of the variables in a format according to the expected experiment output
-        validation_summary_dict = {k: (np.mean(v),) for k, v in validation_dict.items()}
-        testing_summary_dict = {k: (np.mean(v),) for k, v in testing_dict.items()}
+        validation_summary_dict = {k: np.mean(v) for k, v in validation_dict.items()}
+        testing_summary_dict = {k: np.mean(v) for k, v in testing_dict.items()}
     
     # combine all the dictionaries into the output dictionary
     output_dict.update(validation_summary_dict)
