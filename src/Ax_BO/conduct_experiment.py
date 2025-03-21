@@ -103,7 +103,7 @@ def conduct_experiment(
         gss = ThresholdGlobalStoppingStrategy(min_trials=5, threshold=0.95)
     elif global_early_stop and task == "regression":
         # 0.2 range-normalized root mean square deviation
-        gss = ThresholdGlobalStoppingStrategy(min_trials=5, threshold=0.2)
+        gss = ThresholdGlobalStoppingStrategy(min_trials=5, threshold=0.15)
     else:
         gss = None
         
