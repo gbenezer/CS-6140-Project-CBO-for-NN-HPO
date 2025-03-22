@@ -10,6 +10,7 @@ import time
 import warnings
 
 import torch
+from multiprocessing import freeze_support
 from IPython.utils import io
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning import loggers as pl_loggers
@@ -131,6 +132,7 @@ class MnistModel(LightningModule):
 def run_training_job():
 
     mnist_model = MnistModel()
+    print(args.log_path)
 
     # Initialize a trainer (don't log anything since things get so slow...)
     trainer = Trainer(
@@ -168,4 +170,5 @@ def run_training_job():
 
 
 if __name__ == "__main__":
+    freeze_support()
     run_training_job()
