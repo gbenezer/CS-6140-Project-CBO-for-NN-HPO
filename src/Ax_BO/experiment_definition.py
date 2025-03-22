@@ -226,28 +226,19 @@ Superconductivity_single_objective = {
     "test_nrmse_range": ObjectiveProperties(minimize=True)
 }
 
-# TODO: winzorize and/or get thresholds
-
-# For MNIST, valuable configurations have test accuracy at least 90%
-# and training time less than 10 minutes
-# TODO: set thresholds for other objectives
+# NOTE: removed thresholds after unsuccessful MNIST hypervolume experiment
+# thresholds were too high
 MNIST_multiobjective = {
-    "test_accuracy": ObjectiveProperties(minimize=False, threshold=0.9),
+    "test_accuracy": ObjectiveProperties(minimize=False, threshold=0.75),
     "number_parameters": ObjectiveProperties(minimize=True),
-    "training_time": ObjectiveProperties(minimize=True, threshold=10.0),
+    "training_time": ObjectiveProperties(minimize=True),
     "checkpoint_size": ObjectiveProperties(minimize=True),
 }
 
-
-# For Superconductivity, valuable configurations have test normalized root mean
-# squared error (relative to the range; unit normalized) less than 0.3
-# and training time less than 10 minutes
-
-# TODO: set thresholds for other objectives
 Superconductivity_multiobjective = {
     "test_nrmse_range": ObjectiveProperties(minimize=True, threshold=0.3),
     "number_parameters": ObjectiveProperties(minimize=True),
-    "training_time": ObjectiveProperties(minimize=True, threshold=10.0),
+    "training_time": ObjectiveProperties(minimize=True),
     "checkpoint_size": ObjectiveProperties(minimize=True),
 }
 
