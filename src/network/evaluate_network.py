@@ -131,10 +131,12 @@ def evaluate_hyperparameters(
     number_parameters = test_module.num_params
 
     # number of parameters is an integer and has no standard error of mean (std / sqrt(n))
-    output_dict = {"number_parameters": (int(number_parameters), 0.0)}
+    # needs to be specified anyway
+    
     
     if num_rep > 1:
         # calculating and adding metrics and their SEMs
+        output_dict = {"number_parameters": (int(number_parameters), 0.0)}
         output_dict["training_time"] = (
             np.mean(training_times),
             np.std(training_times) / np.sqrt(float(len(training_times))),
@@ -153,6 +155,7 @@ def evaluate_hyperparameters(
         )
     else:
         # calculating and adding metrics without SEMs
+        output_dict = {"number_parameters": int(number_parameters)}
         output_dict["training_time"] = np.mean(training_times)
         output_dict["validation_time"] = np.mean(validation_times)
         output_dict["testing_time"] = np.mean(testing_times)
