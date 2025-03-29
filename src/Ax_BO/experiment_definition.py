@@ -231,15 +231,11 @@ Superconductivity_single_objective = {
 MNIST_multiobjective = {
     "test_accuracy": ObjectiveProperties(minimize=False, threshold=0.75),
     "number_parameters": ObjectiveProperties(minimize=True),
-    "training_time": ObjectiveProperties(minimize=True),
-    "checkpoint_size": ObjectiveProperties(minimize=True),
 }
 
 Superconductivity_multiobjective = {
     "test_nrmse_range": ObjectiveProperties(minimize=True, threshold=0.3),
     "number_parameters": ObjectiveProperties(minimize=True),
-    "training_time": ObjectiveProperties(minimize=True),
-    "checkpoint_size": ObjectiveProperties(minimize=True),
 }
 
 # Parameter constraints (relative to each other; bounds are defined in parameters)
@@ -258,13 +254,12 @@ general_tracking_metrics = [
     "mean_test_loss",
     "cumulative_test_loss",
     "testing_time",
-    "validation_time"
-]
-single_objective_added_metrics = [
-    "number_parameters",
+    "validation_time",
     "training_time",
     "checkpoint_size",
 ]
+
+single_objective_added_metrics = ["number_parameters"]
 classification_metrics = ["validation_accuracy"]
 regression_metrics = [
     "validation_mse",
